@@ -9,7 +9,7 @@ import util as util_fqi
 import copy as cp
 
 class FQIagent():
-    def __init__(self, train_tuples, test_tuples, behavior_path, iters=150, gamma=0.99, batch_size=100, prioritize=False, estimator='lin',
+    def __init__(self, train_tuples, test_tuples, behavior_path, iters=150, gamma=0.99, batch_size=10, prioritize=False, estimator='lin',
                  weights=np.array([1, 1, 1, 1, 1])/5., maxT=36):
             
         self.behavior_path = behavior_path
@@ -28,7 +28,7 @@ class FQIagent():
         self.n_features = len(self.state_feats)
         self.reward_weights = weights
         self.maxT = maxT
-        self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set, behavior_path)
+        # self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set, behavior_path)
         self.n_actions = 4
         
         if estimator == 'tree':
@@ -43,7 +43,7 @@ class FQIagent():
         elif estimator == 'lin':
             self.q_est = LinearRegression()
             
-        self.piE = LinearRegression()#LGBMClassifier(n_estimators=50, silent=True)
+        self.piE = LGBMClassifier(n_estimators=50, silent=True)
         
         self.eval_est = LGBMRegressor(n_estimators=50, silent=True)
 
@@ -64,11 +64,11 @@ class FQIagent():
     def sampleTuples(self):
         
         # Get a batch of unprioritized samples:
-        
         ids = list(np.random.choice(np.arange(self.n_samples), self.batch_size, replace=False))
         batch = {}
         for k in self.training_set.keys():
             batch[k] = np.asarray(self.training_set[k], dtype=object)[ids]
+        # import ipdb; ipdb.set_trace()
         batch['r'] = np.dot(batch['r'] * [1, 1, 10, 10, 100], self.reward_weights)
         batch['s_ids'] = np.asarray(ids, dtype=int)
         batch['ns_ids'] = np.asarray(ids, dtype=int) + 1
@@ -89,7 +89,7 @@ class FQIagent():
     def updateQtable(self, Qtable, batch):
         
         for i, a in enumerate(self.unique_actions):
-            #print(a, i)
+            # import ipdb; ipdb.set_trace()
             Qtable[batch['s_ids'], i] = self.q_est.predict(np.hstack((batch['ns'], np.tile(a, (self.batch_size,1)))))
         return Qtable
     
@@ -128,16 +128,15 @@ class FQIagent():
         meanQtable = meanQtable / repeats
         print('Learn policy')
         self.getPi(meanQtable)
+
         return Qdist
                     
     
     def getPi(self, Qtable):
         optA = np.argmax(Qtable, axis=1)
-        print("Opta: ", optA)
-        #print("Fitting to training set")
-        #print("Optimal actions: ", optA)
+        # print("Opta: ", optA)
         self.piE.fit(self.training_set['s'], optA[:-1])
-        #print("Done Fitting")
+        # import ipdb; ipdb.set_trace()
     
     def testPi(self, behavior):
         accurate = 0
@@ -176,3 +175,4 @@ class FQIagent():
             total += 1
         
         return float(accurate)/total
+

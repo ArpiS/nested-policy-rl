@@ -18,6 +18,7 @@ def construct_dicts(train_tuples, test_tuples):
         test[elt] = []
 
     for tup in train_tuples:
+        # import ipdb; ipdb.set_trace()
         train['s'].append(tup[0].flatten())
         a = tup[1]
         try:
@@ -95,3 +96,5 @@ def learnBehaviour(training_set, test_set, behavior_path):
     pickle.dump(behaviour_pi, open(behavior_path, 'wb'))    
     
     return behaviour_pi
+
+
