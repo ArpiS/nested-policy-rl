@@ -53,7 +53,16 @@ class LMM():
 
 
 	def predict(self, X, y, groups):
-		pass
+		X_test = list(X.flatten())
+		groups = list(groups)
+		predictions = []
+		for x, g in zip(X, groups):
+			pred = x * self.coefs_fg
+			if g == 1:
+				pred += self.coefs_shared
+			predictions.append(pred)
+		mse = mean_squared_error(y, predictions)
+		return predictions, mse
 
 
 if __name__ == "__main__":
@@ -77,6 +86,14 @@ if __name__ == "__main__":
 	# Fit LMM
 	lmm = LMM()
 	lmm.fit(X, y, groups=groups)
+
+	# Test on a random test set
+	X_test = np.random.normal(0, 1, size=(n, p))
+	y_test = X_test @ coefs_shared_true + np.random.normal(0, 1, n)
+	groups_test = np.random.binomial(n=1, p=0.5, size=n)
+
+	preds, mse = lmm.predict(X_test, y_test, groups_test)
+	print("MSE: ", mse)
 
 	# Plot
 	    
