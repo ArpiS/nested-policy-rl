@@ -17,6 +17,7 @@ class LMM():
 			def f(x):
 				beta_shared, beta_fg = x
 				preds = np.squeeze(X) * beta_shared + groups * np.squeeze(X) * beta_fg
+				
 				# MSE
 				return np.mean((y - preds)**2)
 
@@ -53,7 +54,8 @@ class LMM():
 
 
 	def predict(self, X, y, groups):
-		pass
+		preds = np.squeeze(X) * beta_shared + groups * np.squeeze(X) * beta_fg
+		return preds
 
 
 if __name__ == "__main__":
