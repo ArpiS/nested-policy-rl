@@ -17,14 +17,15 @@ class LMM():
 			def f(x):
 				beta_shared, beta_fg = x
 				preds = np.squeeze(X) * beta_shared + groups * np.squeeze(X) * beta_fg
+
 				# MSE
 				return np.mean((y - preds)**2)
 
 			# Initial value of x
 			x0 = np.random.normal(size=2)
 
-			# Try with BFGS
-			xopt = optimize.minimize(f,x0,method='bfgs',options={'disp':1})
+			# Minimize with BFGS
+			xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 0})
 
 			self.coefs_shared = xopt.x[0]
 			self.coefs_fg = xopt.x[1]
@@ -52,17 +53,10 @@ class LMM():
 			raise Exception("Method must be one of [bfgs, project]")
 
 
-	def predict(self, X, y, groups):
-		X_test = list(X.flatten())
-		groups = list(groups)
-		predictions = []
-		for x, g in zip(X, groups):
-			pred = x * self.coefs_fg
-			if g == 1:
-				pred += self.coefs_shared
-			predictions.append(pred)
-		mse = mean_squared_error(y, predictions)
-		return predictions, mse
+
+	def predict(self, X, groups):
+		preds = np.squeeze(X) * self.coefs_shared + groups * np.squeeze(X) * self.coefs_fg
+		return preds
 
 
 if __name__ == "__main__":
@@ -96,7 +90,6 @@ if __name__ == "__main__":
 	print("MSE: ", mse)
 
 	# Plot
-	    
 	data = pd.DataFrame(X, columns=["X"])
 	data['y'] = y
 	data['group'] = groups
@@ -111,7 +104,6 @@ if __name__ == "__main__":
 	y_vals = 0 + (lmm.coefs_fg + lmm.coefs_shared) * x_vals
 	plt.plot(x_vals, y_vals, '--', label="FG coef")
 	plt.legend()
-
 	plt.show()
 
 	import ipdb; ipdb.set_trace()
