@@ -1,5 +1,9 @@
 # contrastive-rl
 
+Models for contrastive reinforcement learning.
+
+## Open AI Gym
+
 To install open AI gym (on Mac):
 
 ```bash

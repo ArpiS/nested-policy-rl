@@ -98,53 +98,8 @@ def generate_transitions_LDS():
 	return train_tuples, test_tuples
 
 
-def generate_transitions_pendulum():
-
-	n_steps = 100
-	n_samples = 100
-	radians_range = np.linspace(-6*np.pi, 6*np.pi, n_steps)
-	transition_tuples = []
-
-	for ii in range(n_samples):
-
-		# Background
-		true_state = np.sin(radians_range)
-		states = true_state + np.random.normal(0, 0.5, size=(n_steps))
-		actions = np.sign(np.cos(radians_range) + np.random.normal(0, 0.1, size=(n_steps))).astype(int)
-		actions = ((actions + 1) / 2).astype(int)
-		actions_one_hot = np.zeros((actions.shape[0], 2))
-		actions_one_hot[np.arange(actions.shape[0]),actions] = 1
-		# import ipdb; ipdb.set_trace()
-		
-		rewards = np.abs(true_state)
-		for jj in range(n_steps - 1):
-			transition_tuples.append((states[jj], actions[jj].flatten(), states[jj+1], rewards[jj].flatten(), "background", jj))
-
-		# import matplotlib.pyplot as plt
-		# plt.plot(radians_range, true_state)
-		# plt.scatter(radians_range, actions)
-		# plt.plot(radians_range, rewards)
-		# plt.show()
-		# import ipdb; ipdb.set_trace()
-
-		# Foreground
-		# states = 5 * np.sin(radians_range) + np.random.normal(0, 0.5, size=(n_steps))
-		# actions = np.sign(np.cos(radians_range) + np.random.normal(0, 0.1, size=(n_steps))).astype(int)
-		# actions = ((actions + 1) / 2).astype(int)
-		# actions_one_hot = np.zeros((actions.shape[0], 2))
-		# actions_one_hot[np.arange(actions.shape[0]),actions] = 1
-		# rewards = np.abs(5 * np.sin(radians_range))
-		# for jj in range(n_steps - 1):
-		# 	transition_tuples.append((states[jj], actions[jj].flatten(), states[jj+1], rewards[jj].flatten(), "foreground", jj))
-
-	split = int(0.8*len(transition_tuples))
-	train_tuples = transition_tuples[:split]
-	test_tuples = transition_tuples[split:]
-
-	return train_tuples, test_tuples
 
 if __name__ == "__main__":
-	import matplotlib.pyplot as plt
-	generate_transitions_pendulum()
+	pass
 
 
