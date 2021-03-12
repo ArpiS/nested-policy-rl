@@ -256,18 +256,20 @@ class LMMFQIagent():
 		batch_foreground = {}
 		batch_background = {}
 		groups = []
-		elts = ['s', 'a', 'ns', 'r', 'ds', 'vnum', 's_ids', 'ns_ids']
+		elts = ['s', 's_ids', 'ns']
 		for el in elts:
 			batch_foreground[el] = []
 			batch_background[el] = []
 
 		for i in range(len(batch['s_ids'])):
 			if batch['ds'][i] == 'foreground':
-				for k in batch.keys():
-					batch_foreground[k].append(batch[k][i])
+				batch_foreground['s_ids'].append(batch['s_ids'][i])
+				batch_foreground['s'].append(batch['s'][i])
+				batch_foreground['ns'].append(batch['ns'][i])
 			else:
-				for k in batch.keys():
-					batch_background[k].append(batch[k][i])
+				batch_background['s_ids'].append(batch['s_ids'][i])
+				batch_background['s'].append(batch['s'][i])
+				batch_background['ns'].append(batch['ns'][i])
 
 		for i in range(len(batch['s_ids'])):
 			if batch['ds'][i] == 'foreground':
