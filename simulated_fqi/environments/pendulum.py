@@ -13,12 +13,12 @@ class PendulumEnv(gym.Env):
         'video.frames_per_second': 30
     }
 
-    def __init__(self, g=10.0):
+    def __init__(self, g=10.0, m=1.):
         self.max_speed = 8
         self.max_torque = 2.
         self.dt = .05
         self.g = g
-        self.m = 1.
+        self.m = m
         self.l = 1.
         self.viewer = None
 
@@ -98,6 +98,45 @@ class PendulumEnv(gym.Env):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+
+    def generate_tuples(self, group, n_iter=101):
+
+        if group not in ["background", "foreground"]:
+            raise Exception("group must be a string: 'background' or 'foreground'")
+        # group is a string: "background" or "foreground"
+
+        STATE_DIM = 3
+        states = np.zeros((n_iter, STATE_DIM))
+        s_init = self.reset()
+        states[0, :] = s_init
+        costs = np.zeros(n_iter)
+        actions = np.zeros(n_iter)
+
+        for ii in range(1, n_iter):
+
+            # Randomly sample an action
+            a = self.action_space.sample()
+
+            # Perform the action
+            s, cost, _, _ = self.step(a)
+            states[ii, :] = s
+            actions[ii] = a
+            costs[ii] = cost
+
+        ## Form tuples
+        tuples = []
+        for ii in range(n_iter-1):
+
+            s = states[ii, :]
+            a = actions[ii]
+            ns = states[ii+1, :]
+            r = -costs[ii]
+
+            # Tuples are (state, action, next state, reward, group, index)
+            curr_tuple = (s, a, ns, r, group, ii)
+            tuples.append(curr_tuple)
+
+        return tuples
 
 
 def angle_normalize(x):
