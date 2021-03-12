@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 from models import FQIagent
 from models import CFQIagent
-from environments import generate_transitions_LDS, generate_transitions_pendulum
+from environments import generate_transitions_LDS, generate_transitions_pendulum, PendulumEnv
 
 BEHAVIOR_PATH = "./behavior.pkl"
 
