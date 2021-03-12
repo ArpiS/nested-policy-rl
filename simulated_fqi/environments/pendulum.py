@@ -125,8 +125,9 @@ if __name__ == "__main__":
         costs[ii] = cost
 
         # Render the current frame
+        print(cost)
         pend.render()
-    import ipdb; ipdb.set_trace()
+        import ipdb; ipdb.set_trace()
 
 
 
