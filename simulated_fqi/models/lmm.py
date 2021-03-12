@@ -5,6 +5,7 @@ import pandas as pd
 import seaborn as sns
 from scipy import optimize
 
+
 class LMM():
 
 	def __init__(self):
@@ -13,28 +14,27 @@ class LMM():
 	def fit(self, X, y, groups, method="bfgs"):
 
 		n, p = X.shape
-
 		if method == "bfgs":
 
 			# Add columns of ones for intercept
 			X = np.hstack([np.ones((n, 1)), X])
 
 			def f(x):
-				beta_shared, beta_fg = x[:p+1], x[p+1:]
+				beta_shared, beta_fg = x[:p + 1], x[p + 1:]
 				# import ipdb; ipdb.set_trace()
 				preds = X @ beta_shared + np.multiply(groups, X) @ beta_fg
 				# optimize MSE
 				return np.mean((y - preds) ** 2)
 
-			# Initial value of x 
+			# Initial value of x
 			# (need 2 times the params to account for both groups)
-			x0 = np.random.normal(size=2*p + 2)
+			x0 = np.random.normal(size=2 * p + 2)
 
 			# Try with BFGS
 			xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 1})
 
-			self.coefs_shared = xopt.x[:p+1]
-			self.coefs_fg = xopt.x[p+1:]
+			self.coefs_shared = xopt.x[:p + 1]
+			self.coefs_fg = xopt.x[p + 1:]
 
 		# Not implemented for 12 dimensions
 		elif method == "project":
@@ -61,8 +61,8 @@ class LMM():
 
 	def predict(self, X, groups):
 		# Add columns of ones for intercept
+		n = X.shape[0]
 		X = np.hstack([np.ones((n, 1)), X])
-		groups = np.expand_dims(groups, 1)
 
 		# Shared part + fg-specific part
 		preds = X @ self.coefs_shared + np.multiply(groups, X) @ self.coefs_fg
@@ -70,21 +70,20 @@ class LMM():
 
 
 if __name__ == "__main__":
-
 	# simple example
 	n = 200
 	p = 1
-	coefs_shared_true = np.repeat([1], p+1)
-	coefs_shared_true = np.reshape(coefs_shared_true, (p+1, 1))
-	coefs_fg_true = np.repeat([4], p+1)
-	coefs_fg_true = np.reshape(coefs_fg_true, (p+1, 1))
+	coefs_shared_true = np.repeat([1], p + 1)
+	coefs_shared_true = np.reshape(coefs_shared_true, (p + 1, 1))
+	coefs_fg_true = np.repeat([4], p + 1)
+	coefs_fg_true = np.reshape(coefs_fg_true, (p + 1, 1))
 	X = np.random.normal(0, 1, size=(n, p))
 
 	groups = np.random.binomial(n=1, p=0.5, size=n)
 	groups = np.expand_dims(groups, 1)
 
 	# Shared effect
-	
+
 	# Add columns of ones for intercept
 	X_ext = np.hstack([np.ones((n, 1)), X])
 	y = X_ext @ coefs_shared_true + np.multiply(groups, X_ext) @ coefs_fg_true
@@ -105,6 +104,6 @@ if __name__ == "__main__":
 	# noise
 	y_test = np.squeeze(y_test) + np.random.normal(0, 1, n)
 	groups_test = np.random.binomial(n=1, p=0.5, size=n)
+	groups_test = np.expand_dims(groups_test, axis=1)
 
 	preds = lmm.predict(X_test, groups_test)
-	
