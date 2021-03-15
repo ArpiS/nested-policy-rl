@@ -10,7 +10,7 @@ import copy as cp
 
 class CFQIagent():
     def __init__(self, train_tuples, test_tuples, iters=150, gamma=0.99, batch_size=100, prioritize=False, estimator='lin',
-                 weights=np.array([1, 1, 1, 1, 1])/5., maxT=36):
+                 weights=np.array([1, 1, 1, 1, 1])/5., maxT=36, state_dim=10):
         
         self.iters = iters
         self.gamma = gamma
@@ -27,8 +27,8 @@ class CFQIagent():
         self.n_features = len(self.state_feats)
         self.reward_weights = weights
         self.maxT = maxT
-        self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set)
-        self.n_actions = 4
+        self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set, state_dim=state_dim)
+        self.n_actions = len(self.unique_actions)
         
         if estimator == 'tree':
             self.q_est = ExtraTreesRegressor(n_estimators=50, max_depth=None, min_samples_leaf=10, min_samples_split=2,
@@ -93,8 +93,8 @@ class CFQIagent():
                     batch_background[k].append(batch[k][i])
             
         # input = [state action]
-        x_fg =  np.hstack((batch_foreground['s'], batch_foreground['a']))
-        x_shared = np.hstack((batch['s'], batch['a'])) 
+        x_fg =  np.hstack((np.asarray(batch_foreground['s']), np.expand_dims(np.asarray(batch_foreground['a']), 1)))
+        x_shared =  np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
         
         # target = r + gamma * max_a(Q(s', a))      == r for first iteration
         y_fg = batch_foreground['r'] + (self.gamma * np.max(Q[batch_foreground['ns_ids'], :], axis=1))

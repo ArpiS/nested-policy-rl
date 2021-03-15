@@ -61,7 +61,7 @@ def random_weights(size=5):
 def norm(vec):
     return vec / np.sum(np.abs(vec))
 
-def learnBehaviour(training_set, test_set):
+def learnBehaviour(training_set, test_set, state_dim):
     floc = "behavior.pkl"
     # if os.path.exists(floc):
     #    behaviour_pi = pickle.load(open(floc, 'rb'))
@@ -69,8 +69,12 @@ def learnBehaviour(training_set, test_set):
     ## Use a linear regression to predict behavior
     behaviour_pi = LinearRegression()
     X = np.vstack((training_set['s'], test_set['s']))
-    X = np.reshape(X, (-1, 10))
-    y = a2c(np.vstack((training_set['a'], test_set['a'])))
+    X = np.reshape(X, (-1, state_dim))
+    if state_dim < 10:
+        y = np.hstack((training_set['a'], test_set['a']))
+    else:
+        y = a2c(np.vstack((training_set['a'], test_set['a'])))
+    
     behaviour_pi.fit(X, y)
     pickle.dump(behaviour_pi, open(floc, 'wb'))
 
