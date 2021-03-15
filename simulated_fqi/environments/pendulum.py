@@ -117,6 +117,9 @@ class PendulumEnv(gym.Env):
             # Randomly sample an action
             a = self.action_space.sample()
 
+            # Currently discretizes action to nearest integer
+            a = np.rint(a)
+
             # Perform the action
             s, cost, _, _ = self.step(a)
             states[ii, :] = s
