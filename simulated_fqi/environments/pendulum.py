@@ -133,7 +133,7 @@ class PendulumEnv(gym.Env):
             r = -costs[ii]
 
             # Tuples are (state, action, next state, reward, group, index)
-            curr_tuple = (s, a, ns, r, group, ii)
+            curr_tuple = (s, a, ns, np.asarray([r]), group, ii)
             tuples.append(curr_tuple)
 
         return tuples
