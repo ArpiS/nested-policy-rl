@@ -170,6 +170,11 @@ class LMMFQIagent():
 
 	def getPi(self, Qtable):
 		optA = np.argmax(Qtable, axis=1)
+		rescaled_optA = []
+		for a in optA:
+			rescaled_optA.append(a - 2)
+
+		optA = np.asarray(rescaled_optA)
 		print("Opta: ", optA)
 		# print("Fitting to training set")
 		# print("Optimal actions: ", optA)
