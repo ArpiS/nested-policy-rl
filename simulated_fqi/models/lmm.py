@@ -4,7 +4,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import log_loss
 import pandas as pd
 import seaborn as sns
-from scipy import optimize
+from scipy import optimize, special
 
 
 class LMM():
@@ -27,6 +27,8 @@ class LMM():
                 if model == 'regression':
                     return np.mean((y - preds) ** 2)
                 elif model == 'classification':
+                    preds = special.expit(preds)
+                    print("PREDS: ", preds)
                     return log_loss(y, preds)
                 else:
                     raise Exception("Model must be either regression or classification")

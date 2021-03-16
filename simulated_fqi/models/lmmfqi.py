@@ -185,6 +185,6 @@ class LMMFQIagent():
 			else:
 				groups.append(0)
 		groups = np.expand_dims(groups, axis=1)
-		self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups)
+		self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups, model='classification')
 
 # print("Done Fitting")
