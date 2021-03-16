@@ -8,6 +8,7 @@ from scipy import optimize, special
 import ipdb
 import torch
 import torch.nn as nn
+import pandas as pd
 
 
 class LMM():
@@ -25,8 +26,6 @@ class LMM():
             # Add columns of ones for intercept
             X = np.hstack([np.ones((n, 1)), X])
 
-
-            
             def f(x):
                 # optimize MSE
                 if self.model == 'regression':
@@ -34,12 +33,25 @@ class LMM():
                     preds = X @ beta_shared + np.multiply(groups, X) @ beta_fg
                     return np.mean((y - preds) ** 2)
                 elif self.model == 'classification':
-                    x = x.reshape((2 * p + 2, self.num_classes))
+                    
+                    # Reshape from flattened vector
+                    x = np.reshape(x, [2 * p + 2, self.num_classes])
                     beta_shared, beta_fg = x[:p+1, :], x[p + 1:, :]
+                    
+                    # Linear function
                     preds = X @ beta_shared + np.multiply(groups, X) @ beta_fg
+
+                    # Logsistic function
                     preds = special.expit(preds)
-                    loss = nn.CrossEntropyLoss
-                    return loss(preds, y)#log_loss(y, preds)
+                    # print(preds)
+
+                    # Normalize each row to sum to 1 (ie, be a valid prob. distribution)
+                    # preds = preds / (preds.sum(axis=1) + 1e-4)[:,None]
+
+                    # Compute cross entropy
+                    ce = log_loss(y, preds)
+
+                    return ce
                 else:
                     raise Exception("Model must be either regression or classification")
 
@@ -48,16 +60,19 @@ class LMM():
             # (need 2 times the params to account for both groups)
             # (separate row of params for each class)
             if self.model == 'classification':
-                x0 = np.random.normal(size=(2 * p + 2) *self.num_classes)
-                #ipdb.set_trace()
+                x0 = np.random.normal(size=(2 * p + 2, self.num_classes))
+                # Need to flatten for optimizer
+                x0 = np.ndarray.flatten(x0)
             else:
                 x0 = np.random.normal(size=2 * p + 2)
 
             # Try with BFGS
-            xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 0})
-            #import ipdb; ipdb.set_trace()
-            self.coefs_shared = xopt.x[:p + 1]
-            self.coefs_fg = xopt.x[p + 1:]
+            xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 1})
+
+            # Reshape from flattened vector
+            xstar = np.reshape(xopt.x, [2 * p + 2, self.num_classes])
+            self.coefs_shared = xstar[:p + 1, :]
+            self.coefs_fg = xstar[p + 1:, :]
 
         # Not implemented for 12 dimensions
         elif method == "project":
@@ -89,10 +104,55 @@ class LMM():
 
         # Shared part + fg-specific part
         preds = X @ self.coefs_shared + np.multiply(groups, X) @ self.coefs_fg
+
+        if self.model == 'regression':
+            # only need linear part
+            pass
+
+        elif self.model == 'classification':
+            preds = np.argmax(preds, axis=1)
+
         return preds
 
 
 if __name__ == "__main__":
+
+    # Classification example
+    n = 200
+    p = 5
+    k = 3
+    lmm = LMM(model="classification", num_classes=k)
+
+    coefs_shared_true = np.random.normal(size=(p, k))
+    coefs_fg_true = np.random.normal(size=(p, k))
+    X = np.random.normal(size=(n, p))
+    groups = np.zeros(n)
+    groups[n//2:] = 1
+    groups = np.expand_dims(groups, 1)
+
+    preds = X @ coefs_shared_true + np.multiply(groups, X) @ coefs_fg_true
+
+    y = np.argmax(preds, axis=1)
+    
+    lmm.fit(X, y, groups=groups)
+
+    Xtest = np.random.normal(size=(n, p))
+    groups = np.zeros(n)
+    groups[n//2:] = 1
+    groups = np.expand_dims(groups, 1)
+
+    preds = Xtest @ coefs_shared_true + np.multiply(groups, Xtest) @ coefs_fg_true
+
+    ytest = np.argmax(preds, axis=1)
+
+    yhat = lmm.predict(Xtest, groups)
+    acc = np.mean(ytest == yhat)
+    print("accuracy: {}".format(round(acc, 3)))
+    import ipdb; ipdb.set_trace()
+
+    
+
+
     # simple example
     n = 200
     p = 1
@@ -104,8 +164,6 @@ if __name__ == "__main__":
 
     groups = np.random.binomial(n=1, p=0.5, size=n)
     groups = np.expand_dims(groups, 1)
-
-    # Shared effect
 
     # Add columns of ones for intercept
     X_ext = np.hstack([np.ones((n, 1)), X])
