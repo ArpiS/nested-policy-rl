@@ -10,17 +10,28 @@ from pendulum import PendulumEnv
 
 # fg and bg have different mass in this case
 
-def tuples():
-    ### Background
-    pend = PendulumEnv(m=1.0)
-    bg_tuples = pend.generate_tuples(n_iter=100, group="background")
+def tuples(n_trajectories=100):
 
-    ## Foreground
-    pend = PendulumEnv(m=5.0)
-    fg_tuples = pend.generate_tuples(n_iter=100, group="foreground")
-    return bg_tuples, fg_tuples
+	bg_tuples = []
+	fg_tuples = []
 
-#import ipdb; ipdb.set_trace()
+	for _ in range(n_trajectories):
+		### Background
+		pend = PendulumEnv(m=1.0)
+		curr_bg_tuples = pend.generate_tuples(n_iter=101, group="background")
+		bg_tuples.extend(curr_bg_tuples)
+
+		## Foreground
+		pend = PendulumEnv(m=5.0)
+		curr_fg_tuples = pend.generate_tuples(n_iter=101, group="foreground")
+		fg_tuples.extend(curr_fg_tuples)
+		
+	return bg_tuples, fg_tuples
+
+
+if __name__ == "__main__":
+	tuples()
+	
 
 
 

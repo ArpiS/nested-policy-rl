@@ -22,7 +22,6 @@ class LMM():
             
             def f(x):
                 beta_shared, beta_fg = x[:p + 1], x[p + 1:]
-                # import ipdb; ipdb.set_trace()
                 preds = X @ beta_shared + np.multiply(groups, X) @ beta_fg
                 # optimize MSE
                 if model == 'regression':
@@ -38,7 +37,7 @@ class LMM():
             x0 = np.random.normal(size=2 * p + 2)
             
             # Try with BFGS
-            xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 1})
+            xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 0})
             #import ipdb; ipdb.set_trace()
             self.coefs_shared = xopt.x[:p + 1]
             self.coefs_fg = xopt.x[p + 1:]
