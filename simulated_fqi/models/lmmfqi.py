@@ -169,11 +169,11 @@ class LMMFQIagent():
 
 	def getPi(self, Qtable):
 		optA = np.argmax(Qtable, axis=1)
-		rescaled_optA = []
-		for a in optA:
-			rescaled_optA.append(a - 2)
-
-		optA = np.asarray(rescaled_optA)
+		# rescaled_optA = []
+		# for a in optA:
+		# 	rescaled_optA.append(a - 2)
+		#
+		# optA = np.asarray(rescaled_optA)
 		print("Opta: ", optA)
 		# print("Fitting to training set")
 		# print("Optimal actions: ", optA)
@@ -185,5 +185,6 @@ class LMMFQIagent():
 				groups.append(0)
 		groups = np.expand_dims(groups, axis=1)
 		self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups)
+		# Have to index all subsequent predictions based on the actions array [-2, -1, 0, 1, 2]
 
 # print("Done Fitting")
