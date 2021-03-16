@@ -54,8 +54,8 @@ class LMMFQIagent():
 		self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set, state_dim=state_dim)
 		self.n_actions = len(self.unique_actions)
 
-		self.q_est = LMM()
-		self.piE = LMM() #LinearRegression()
+		self.q_est = LMM(model='regression')
+		self.piE = LMM(model='classification', num_classes=self.n_actions)
 		self.eval_est = LGBMRegressor(n_estimators=50, silent=True)
 
 	def sub_actions(self):
@@ -112,7 +112,6 @@ class LMMFQIagent():
 		# input = [state action]
 		x_shared =  np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
 		y_shared = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
-		#import ipdb; ipdb.set_trace()
 		groups = np.expand_dims(groups, axis=1)
 		self.q_est.fit(x_shared, y_shared, groups)
     
@@ -185,6 +184,6 @@ class LMMFQIagent():
 			else:
 				groups.append(0)
 		groups = np.expand_dims(groups, axis=1)
-		self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups, model='classification')
+		self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups)
 
 # print("Done Fitting")

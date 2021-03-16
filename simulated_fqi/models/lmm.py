@@ -5,39 +5,54 @@ from sklearn.metrics import log_loss
 import pandas as pd
 import seaborn as sns
 from scipy import optimize, special
+import ipdb
+import torch
+import torch.nn as nn
 
 
 class LMM():
 
-    def __init__(self):
-        pass
+    def __init__(self, model='regression', num_classes=None):
+        self.model = model
+        self.num_classes = num_classes
+        if self.model == 'classification' and self.num_classes == None:
+            raise Exception("Need to specify number of classes if model is classification")
 
-    def fit(self, X, y, groups, method="bfgs", model='regression'):
+    def fit(self, X, y, groups, method="bfgs"):
 
         n, p = X.shape
         if method == "bfgs":
-
             # Add columns of ones for intercept
             X = np.hstack([np.ones((n, 1)), X])
+
+
             
             def f(x):
-                beta_shared, beta_fg = x[:p + 1], x[p + 1:]
-                preds = X @ beta_shared + np.multiply(groups, X) @ beta_fg
                 # optimize MSE
-                if model == 'regression':
+                if self.model == 'regression':
+                    beta_shared, beta_fg = x[:p + 1], x[p + 1:]
+                    preds = X @ beta_shared + np.multiply(groups, X) @ beta_fg
                     return np.mean((y - preds) ** 2)
-                elif model == 'classification':
+                elif self.model == 'classification':
+                    x = x.reshape((2 * p + 2, self.num_classes))
+                    beta_shared, beta_fg = x[:p+1, :], x[p + 1:, :]
+                    preds = X @ beta_shared + np.multiply(groups, X) @ beta_fg
                     preds = special.expit(preds)
-                    print("PREDS: ", preds)
-                    return log_loss(y, preds)
+                    loss = nn.CrossEntropyLoss
+                    return loss(preds, y)#log_loss(y, preds)
                 else:
                     raise Exception("Model must be either regression or classification")
 
 
             # Initial value of x
             # (need 2 times the params to account for both groups)
-            x0 = np.random.normal(size=2 * p + 2)
-            
+            # (separate row of params for each class)
+            if self.model == 'classification':
+                x0 = np.random.normal(size=(2 * p + 2) *self.num_classes)
+                #ipdb.set_trace()
+            else:
+                x0 = np.random.normal(size=2 * p + 2)
+
             # Try with BFGS
             xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 0})
             #import ipdb; ipdb.set_trace()
