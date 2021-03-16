@@ -46,7 +46,7 @@ class LMM():
                     # print(preds)
 
                     # Normalize each row to sum to 1 (ie, be a valid prob. distribution)
-                    # preds = preds / (preds.sum(axis=1) + 1e-4)[:,None]
+                    preds = preds / (preds.sum(axis=1) + 1e-4)[:,None]
 
                     # Compute cross entropy
                     ce = log_loss(y, preds, labels=[0, 1, 2, 3, 4])
