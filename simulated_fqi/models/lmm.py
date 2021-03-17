@@ -9,6 +9,7 @@ import ipdb
 import torch
 import torch.nn as nn
 import pandas as pd
+import ipdb
 
 
 class LMM():
@@ -33,7 +34,6 @@ class LMM():
                     preds = X @ beta_shared + np.multiply(groups, X) @ beta_fg
                     return np.mean((y - preds) ** 2)
                 elif self.model == 'classification':
-                    
                     # Reshape from flattened vector
                     x = np.reshape(x, [2 * p + 2, self.num_classes])
                     beta_shared, beta_fg = x[:p+1, :], x[p + 1:, :]
@@ -49,7 +49,7 @@ class LMM():
                     preds = preds / (preds.sum(axis=1) + 1e-4)[:,None]
 
                     # Compute cross entropy
-                    ce = log_loss(y, preds)
+                    ce = log_loss(y, preds, labels=[0, 1, 2, 3, 4])
 
                     return ce
                 else:
@@ -69,8 +69,8 @@ class LMM():
             # Try with BFGS
             xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 1})
 
-            # Reshape from flattened vector
             if self.model == 'classification':
+                # Reshape from flattened vector
                 xstar = np.reshape(xopt.x, [2 * p + 2, self.num_classes])
                 self.coefs_shared = xstar[:p + 1, :]
                 self.coefs_fg = xstar[p + 1:, :]
