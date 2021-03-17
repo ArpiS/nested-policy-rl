@@ -47,7 +47,7 @@ from os.path import join as pjoin
 from pendulum import PendulumEnv
 
 
-bg_tuples, fg_tuples = tuples()
+bg_tuples, fg_tuples = tuples(n_trajectories=10)
 all_tuples = bg_tuples + fg_tuples
 random.shuffle(all_tuples)
 split = 0.8
@@ -58,7 +58,7 @@ test_tuples = all_tuples[int(split*len(all_tuples)):]
 training_set, test_set = util_fqi.construct_dicts(train_tuples, test_tuples)
 
 
-lmm_agent = LMMFQIagent(train_tuples=train_tuples, test_tuples=test_tuples, gamma=0.0, state_dim=3, batch_size=200, iters=10)
+lmm_agent = LMMFQIagent(train_tuples=train_tuples, test_tuples=test_tuples, gamma=0.0, state_dim=3, batch_size=1000, iters=2)
 Q_dist = lmm_agent.runFQI(repeats=1)
 plt.plot(Q_dist, label= "LMMFQI")
 plt.xlabel("Iteration")

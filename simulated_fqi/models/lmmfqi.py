@@ -38,7 +38,7 @@ class LMMFQIagent():
 
 		self.iters = iters
 		self.gamma = gamma
-		self.batch_size = batch_size
+		# self.batch_size = batch_size
 		self.prioritize_a = prioritize
 		self.training_set, self.test_set = util_fqi.construct_dicts(train_tuples, test_tuples)
 		self.raw_test = test_tuples
@@ -46,6 +46,7 @@ class LMMFQIagent():
 		self.visits = {'train': len(train_tuples), 'test': len(test_tuples)}
 		self.NV = {'train': len(train_tuples), 'test': len(test_tuples)}
 		self.n_samples = len(self.training_set['s'])
+		self.batch_size = self.n_samples
 		_, self.unique_actions, self.action_counts, _ = self.sub_actions()
 		self.state_feats = [str(x) for x in range(10)]
 		self.n_features = len(self.state_feats)
@@ -81,7 +82,8 @@ class LMMFQIagent():
 		return a, unique_actions, action_counts, n_actions
 
 	def sampleTuples(self):
-		ids = list(np.random.choice(np.arange(self.n_samples), self.batch_size, replace=False))
+		# ids = list(np.random.choice(np.arange(self.n_samples), self.batch_size, replace=False))
+		ids = np.arange(self.n_samples)
 		batch = {}
 		for k in self.training_set.keys():
 			batch[k] = np.asarray(self.training_set[k], dtype=object)[ids]
@@ -134,15 +136,24 @@ class LMMFQIagent():
 			# input = [state action]
 			x = np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
 
-			y = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
+			### Response variable is just the value of the Q table at these indices
+			### 	Important note: at this point we've already acounted for the discount factor gamma
+			###		and we've already taken a max across actions.
+			action_idxs = (batch['a'] + 2).astype(int)			
+			Q_states = Q[batch['s_ids'], :]
+			y = Q_states[np.arange(len(Q_states)), action_idxs]
 
+			# old version
+			# y = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
 			self.q_est.fit(x, y)
+			
+			
 
 			return batch, None, None
 		else:
 			raise Exception("Q_est must be either an LGBM regressor or LMM")
 
-	def updateQtable(self, Qtable, batch, batch_fg, batch_bg):
+	def updateQtable(self, Qtable, batch, batch_fg, batch_bg, iter_num):
 		# Update for foregound using just foreground
 		# Update for background using shared
 
@@ -157,10 +168,28 @@ class LMMFQIagent():
 				Qtable[batch_bg['s_ids'], i] = self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), groups=np.tile([0], (bg_size, 1)))
 				Qtable[batch_fg['s_ids'], i] = self.q_est.predict(np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1)))), groups=np.tile([1], (fg_size, 1)))
 		elif self.estimator == 'gbm':
+
+			## Insert observed reward to appropriate slots in Q table
+			##      NOTE: We'll add the max across actions for the next state below
+			##  	IMPORTANT: THIS DOESN'T WORK FOR BATCH SIZES NOW
+			action_idxs = (batch['a'] + 2).astype(int)
+			bool_idx = np.vstack([np.arange(5) == x for x in action_idxs])
+			Qtable[:-1, :][bool_idx] = np.squeeze(batch['r'])
+				
+			# If this is the first iteration, we haven't fit q_est yet
+			## In this case, just return the table for now
+			if iter_num == 0:
+				return Qtable
+			## Get predicted rewards for each action based on the next state
+			predicted_rewards = np.zeros((batch['ns'].shape[0], self.n_actions))
 			for i, a in enumerate(self.unique_actions):
-				# print(a, i)
-				Qtable[batch['s_ids'], i] = self.q_est.predict(np.hstack((batch['ns'], np.tile(a, (self.batch_size, 1)))))
-        
+				predicted_rewards[:, i] = self.q_est.predict(np.hstack((batch['ns'], np.tile(a, (self.batch_size, 1)))))
+						
+		## Add these values to the Q table
+		argmax_action_idxs = np.argmax(predicted_rewards, axis=1)
+		bool_idx = np.vstack([np.arange(5) == x for x in argmax_action_idxs])
+		Qtable[:-1, :][bool_idx] += self.gamma * predicted_rewards[bool_idx]
+		
 		return Qtable
 
 	def runFQI(self, repeats=10):
@@ -171,7 +200,7 @@ class LMMFQIagent():
 		for r in range(repeats):
 			print('Run', r, ':')
 			print('Initialize: get batch, set initial Q')
-			Qtable = np.zeros((self.n_samples + 1, self.n_actions))
+			Qtable = np.ones((self.n_samples + 1, self.n_actions)) * -999999
 			Qdist = []
 
 			# print('Run FQI')
@@ -182,14 +211,15 @@ class LMMFQIagent():
 				# sample batch
 				batch = self.sampleTuples()
 
-				# learn q_est with samples, targets from batch
-				batch, batch_foreground, batch_background = self.fitQ(batch, Qtable)
-
 				# update Q table for all s given new estimator
-				self.updateQtable(Qtable, batch, batch_foreground, batch_background)
+				self.updateQtable(Qtable, batch, None, None, iteration)
+
+				# learn q_est with samples, targets from batch
+				batch, _, _ = self.fitQ(batch, Qtable)
 
 				# check divergence from last estimate
 				Qdist.append(mean_absolute_error(Qold, Qtable))
+
 
 			# plt.plot(Qdist)
 			meanQtable += Qtable
@@ -207,6 +237,7 @@ class LMMFQIagent():
 		for a in optA:
 			rescaled_optA.append(a - 2)
 
+
 		optA = np.asarray(rescaled_optA)
 		print("Opta: ", optA)
 		groups = []
@@ -217,8 +248,12 @@ class LMMFQIagent():
 				groups.append(0)
 		groups = np.expand_dims(groups, axis=1)
 		self.optA = optA[:-1]
+		
 		self.piE.fit(self.training_set['s'], optA[:-1])
 		print("Fit score: ", self.piE.score(self.training_set['s'], optA[:-1]))
+		plt.hist(optA[:-1])
+		plt.show()
+		import ipdb; ipdb.set_trace()
 		#self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups)
 
 # print("Done Fitting")
