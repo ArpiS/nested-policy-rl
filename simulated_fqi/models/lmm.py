@@ -70,9 +70,13 @@ class LMM():
             xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': 1})
 
             # Reshape from flattened vector
-            xstar = np.reshape(xopt.x, [2 * p + 2, self.num_classes])
-            self.coefs_shared = xstar[:p + 1, :]
-            self.coefs_fg = xstar[p + 1:, :]
+            if self.model == 'classification':
+                xstar = np.reshape(xopt.x, [2 * p + 2, self.num_classes])
+                self.coefs_shared = xstar[:p + 1, :]
+                self.coefs_fg = xstar[p + 1:, :]
+            elif self.model == 'regression':
+                self.coefs_shared = xopt.x[:p + 1]
+                self.coefs_fg = xopt.x[p + 1:]
 
         # Not implemented for 12 dimensions
         elif method == "project":

@@ -53,6 +53,8 @@ class LMMFQIagent():
 		self.maxT = maxT
 		self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set, state_dim=state_dim)
 		self.n_actions = len(self.unique_actions)
+		s = pd.Series(np.arange(self.n_actions))
+		self.actions_onehot = pd.get_dummies(s).values
 
 		self.q_est = LMM(model='regression')
 		self.piE = LMM(model='classification', num_classes=self.n_actions)
@@ -110,9 +112,17 @@ class LMMFQIagent():
 			else:
 				groups.append(0)
 		# input = [state action]
+		
+		# s = pd.Series(batch['a'])
+		# as_onehot = pd.get_dummies(s).values
 		x_shared =  np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
+		interaction_term = x_shared[:, :3] * np.expand_dims(x_shared[:, -1], 1)
+		x_shared = np.hstack([x_shared, interaction_term])
+		# x_shared =  np.hstack((np.asarray(batch['s']), as_onehot))
 		y_shared = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
 		groups = np.expand_dims(groups, axis=1)
+		# plt.scatter(x_shared[:, -1], y_shared)
+		# plt.show()
 		self.q_est.fit(x_shared, y_shared, groups)
     
 		return batch_foreground, batch_background
@@ -123,9 +133,28 @@ class LMMFQIagent():
 
 		bg_size = len(batch_bg['s'])
 		fg_size = len(batch_fg['s'])
+
+		
 		for i, a in enumerate(self.unique_actions):
-			Qtable[batch_bg['s_ids'], i] = self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), np.tile([0], (bg_size, 1)))
-			Qtable[batch_fg['s_ids'], i] = self.q_est.predict(np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1)))), np.tile([1], (fg_size, 1)))
+		# for i in range(len(self.unique_actions)):
+			# a = self.actions_onehot[i, :]
+			
+			covariates_bg = np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1))))
+			interaction_term = covariates_bg[:, :3] * np.expand_dims(covariates_bg[:, -1], 1)
+			covariates_bg = np.hstack([covariates_bg, interaction_term])
+			groups_bg = np.tile([0], (bg_size, 1))
+			Qtable[batch_bg['s_ids'], i] = self.q_est.predict(covariates_bg, groups=groups_bg)
+
+			covariates_fg = np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1))))
+			interaction_term = covariates_fg[:, :3] * np.expand_dims(covariates_fg[:, -1], 1)
+			covariates_fg = np.hstack([covariates_fg, interaction_term])
+			groups_fg = np.tile([1], (fg_size, 1))
+			Qtable[batch_fg['s_ids'], i] = self.q_est.predict(covariates_fg, groups=groups_fg)
+			
+
+		# 	plt.hist(self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), np.tile([0], (bg_size, 1))), label=a)
+		# plt.legend()
+		# plt.show()
         
 		return Qtable
 
@@ -157,6 +186,8 @@ class LMMFQIagent():
 				# check divergence from last estimate
 				Qdist.append(mean_absolute_error(Qold, Qtable))
 
+				print(np.unique(np.argmax(Qtable, axis=1)))
+
 			# plt.plot(Qdist)
 			meanQtable += Qtable
 
@@ -184,6 +215,7 @@ class LMMFQIagent():
 			else:
 				groups.append(0)
 		groups = np.expand_dims(groups, axis=1)
+		import ipdb; ipdb.set_trace()
 		self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups)
 
 # print("Done Fitting")
