@@ -49,7 +49,7 @@ class LMM():
                     preds = preds / (preds.sum(axis=1) + 1e-4)[:,None]
 
                     # Compute cross entropy
-                    ce = log_loss(y, preds, labels=[0, 1, 2, 3, 4])
+                    ce = log_loss(y, preds, labels=[-2, -1, 0, 1, 2])
 
                     return ce
                 else:

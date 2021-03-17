@@ -4,12 +4,12 @@ import pickle, os, csv, math, time, joblib
 from sklearn.ensemble import ExtraTreesRegressor, ExtraTreesClassifier
 from lightgbm import LGBMRegressor, LGBMClassifier
 from sklearn.metrics import mean_absolute_error
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 import util as util_fqi
 import copy as cp
 
 class FQIagent():
-    def __init__(self, train_tuples, test_tuples, iters=150, gamma=0.99, batch_size=100, prioritize=False, estimator='lin',
+    def __init__(self, train_tuples, test_tuples, iters=150, gamma=0.99, batch_size=100, prioritize=False, estimator='gbm',
                  weights=np.array([1, 1, 1, 1, 1])/5., maxT=36, state_dim=10):
         
         self.iters = iters
@@ -29,6 +29,7 @@ class FQIagent():
         self.maxT = maxT
         self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set, state_dim=state_dim)
         self.n_actions = len(self.unique_actions)
+        print("N actions: ", self.n_actions)
         
         if estimator == 'tree':
             self.q_est = ExtraTreesRegressor(n_estimators=50, max_depth=None, min_samples_leaf=10, min_samples_split=2,
@@ -42,9 +43,7 @@ class FQIagent():
         elif estimator == 'lin':
             self.q_est = LinearRegression()
             
-        self.piE = LinearRegression()
-        
-        self.eval_est = LGBMRegressor(n_estimators=50, silent=True)
+        self.piE = LogisticRegression() #LinearRegression()
 
     def sub_actions(self):
         
@@ -62,28 +61,38 @@ class FQIagent():
     
     def sampleTuples(self):
         
-        # Get a batch of unprioritized samples:
-        
+        # # Get a batch of unprioritized samples:
+        #
+        # ids = list(np.random.choice(np.arange(self.n_samples), self.batch_size, replace=False))
+        # batch = {}
+        # for k in self.training_set.keys():
+        #     batch[k] = np.asarray(self.training_set[k], dtype=object)[ids]
+        # batch['r'] = np.dot(batch['r'] * [1, 1, 10, 10, 100], self.reward_weights)
+        # batch['s_ids'] = np.asarray(ids, dtype=int)
+        # batch['ns_ids'] = np.asarray(ids, dtype=int) + 1
+        #
+        #
+        # return batch
         ids = list(np.random.choice(np.arange(self.n_samples), self.batch_size, replace=False))
         batch = {}
         for k in self.training_set.keys():
             batch[k] = np.asarray(self.training_set[k], dtype=object)[ids]
-        batch['r'] = np.dot(batch['r'] * [1, 1, 10, 10, 100], self.reward_weights)
+        batch['r'] = batch['r']  # np.dot(batch['r'], self.reward_weights)
+
         batch['s_ids'] = np.asarray(ids, dtype=int)
         batch['ns_ids'] = np.asarray(ids, dtype=int) + 1
-            
-    
+
         return batch
     
     def fitQ(self, batch, Q):
         
         # input = [state action]
         x =  np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
-        
+
         # target = r + gamma * max_a(Q(s', a))      == r for first iteration
-        y = batch['r'] + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
-        
-        self.q_est.fit(x, y)   
+        y = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
+
+        self.q_est.fit(x, y)
     
     def updateQtable(self, Qtable, batch):
         
@@ -141,44 +150,7 @@ class FQIagent():
         print("Opta: ", optA)
         #print("Fitting to training set")
         #print("Optimal actions: ", optA)
+        self.optA = optA[:-1]
         self.piE.fit(self.training_set['s'], optA[:-1])
+        print("Fit score: ", self.piE.score(self.training_set['s'], optA[:-1]))
         #print("Done Fitting")
-    
-    def testPi(self, behavior):
-        accurate = 0
-        total = 0
-        
-        for tup in self.raw_test:
-            s = tup[0]
-            try:
-                a = tup[1]
-                a = np.concatenate(a).ravel()
-                a = list(a)
-            except:
-                a = tup[1]
-            # actions based on policy we learn
-            s = s.reshape((1, 10))
-            evalA = self.piE.predict(s)
-            
-            # predicted actions based on historical actions model
-            behavB = behavior.predict(s)
-            
-            if behavB <= 0.25:
-                behavB = 0
-            elif behavB <= 0.5:
-                behavB = 1
-            elif behavB <= 0.75:
-                behavB = 2
-            else:
-                behavB = 3
-            
-            # actual historical actions
-            actions = [[0, 0], [0, 1], [1, 0], [1, 1]]
-            behavA = actions.index(a)
-            
-            if behavA == behavB:
-                accurate += 1
-            total += 1
-        
-        return float(accurate)/total
-

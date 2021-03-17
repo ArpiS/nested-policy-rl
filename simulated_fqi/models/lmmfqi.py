@@ -17,7 +17,7 @@ import collections
 #import shap
 import seaborn as sns
 import random
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 np.seterr(all="ignore")
 import matplotlib.pyplot as plt
 import tqdm
@@ -33,7 +33,7 @@ import util as util_fqi
 
 
 class LMMFQIagent():
-	def __init__(self, train_tuples, test_tuples, iters=150, gamma=0.1, batch_size=100, prioritize=False, estimator='lin',
+	def __init__(self, train_tuples, test_tuples, iters=150, gamma=0.1, batch_size=100, prioritize=False, estimator='gbm',
 				 weights=np.array([1, 1, 1, 1, 1]) / 5., maxT=36, state_dim=10):
 
 		self.iters = iters
@@ -53,12 +53,18 @@ class LMMFQIagent():
 		self.maxT = maxT
 		self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set, state_dim=state_dim)
 		self.n_actions = len(self.unique_actions)
+		print("N actions: ", self.n_actions)
 		s = pd.Series(np.arange(self.n_actions))
 		self.actions_onehot = pd.get_dummies(s).values
+		self.estimator = estimator
 
-		self.q_est = LMM(model='regression')
-		self.piE = LMM(model='classification', num_classes=self.n_actions)
-		self.eval_est = LGBMRegressor(n_estimators=50, silent=True)
+		if self.estimator == 'gbm':
+			self.q_est = LGBMRegressor(n_estimators=50, silent=True)
+		elif self.estimator == 'lmm':
+			self.q_est = LMM(model='regression')
+
+
+		self.piE = LogisticRegression() #LMM(model='classification', num_classes=self.n_actions)
 
 	def sub_actions(self):
 
@@ -87,64 +93,73 @@ class LMMFQIagent():
 		return batch
 
 	def fitQ(self, batch, Q):
+		if self.estimator == 'lmm':
+			batch_foreground = {}
+			batch_background = {}
+			groups = []
+			elts = ['s', 's_ids', 'ns']
+			for el in elts:
+				batch_foreground[el] = []
+				batch_background[el] = []
 
-		batch_foreground = {}
-		batch_background = {}
-		groups = []
-		elts = ['s', 's_ids', 'ns']
-		for el in elts:
-			batch_foreground[el] = []
-			batch_background[el] = []
+			for i in range(len(batch['s_ids'])):
+				if batch['ds'][i] == 'foreground':
+					batch_foreground['s_ids'].append(batch['s_ids'][i])
+					batch_foreground['s'].append(batch['s'][i])
+					batch_foreground['ns'].append(batch['ns'][i])
+				else:
+					batch_background['s_ids'].append(batch['s_ids'][i])
+					batch_background['s'].append(batch['s'][i])
+					batch_background['ns'].append(batch['ns'][i])
 
-		for i in range(len(batch['s_ids'])):
-			if batch['ds'][i] == 'foreground':
-				batch_foreground['s_ids'].append(batch['s_ids'][i])
-				batch_foreground['s'].append(batch['s'][i])
-				batch_foreground['ns'].append(batch['ns'][i])
-			else:
-				batch_background['s_ids'].append(batch['s_ids'][i])
-				batch_background['s'].append(batch['s'][i])
-				batch_background['ns'].append(batch['ns'][i])
+			for i in range(len(batch['s_ids'])):
+				if batch['ds'][i] == 'foreground':
+					groups.append(1)
+				else:
+					groups.append(0)
+			# input = [state action]
 
-		for i in range(len(batch['s_ids'])):
-			if batch['ds'][i] == 'foreground':
-				groups.append(1)
-			else:
-				groups.append(0)
-		# input = [state action]
-		
-		s = pd.Series(batch['a'])
-		as_onehot = pd.get_dummies(s).values
-		x_shared =  np.hstack((np.asarray(batch['s']), as_onehot))
-		# x_shared =  np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
-		
-		y_shared = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
-		groups = np.expand_dims(groups, axis=1)
-		# plt.scatter(x_shared[:, -1], y_shared)
-		# plt.show()
-		self.q_est.fit(x_shared, y_shared, groups)
-    
-		return batch_foreground, batch_background
+			s = pd.Series(batch['a'])
+			as_onehot = pd.get_dummies(s).values
+			x_shared =  np.hstack((np.asarray(batch['s']), as_onehot))
+			# x_shared =  np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
 
-	def updateQtable(self, Qtable, batch_fg, batch_bg):
+			y_shared = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
+			groups = np.expand_dims(groups, axis=1)
+			# plt.scatter(x_shared[:, -1], y_shared)
+			# plt.show()
+			self.q_est.fit(x_shared, y_shared, groups)
+			return batch, batch_foreground, batch_background
+		elif self.estimator == 'gbm':
+			# input = [state action]
+			x = np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
+
+			y = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
+
+			self.q_est.fit(x, y)
+
+			return batch, None, None
+		else:
+			raise Exception("Q_est must be either an LGBM regressor or LMM")
+
+	def updateQtable(self, Qtable, batch, batch_fg, batch_bg):
 		# Update for foregound using just foreground
 		# Update for background using shared
 
-		bg_size = len(batch_bg['s'])
-		fg_size = len(batch_fg['s'])
+		if self.estimator == 'lmm':
+			bg_size = len(batch_bg['s'])
+			fg_size = len(batch_fg['s'])
 
-		
-		# for i, a in enumerate(self.unique_actions):
-		for i in range(len(self.unique_actions)):
-			a = self.actions_onehot[i, :]
-			
-			Qtable[batch_bg['s_ids'], i] = self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), groups=np.tile([0], (bg_size, 1)))
-			Qtable[batch_fg['s_ids'], i] = self.q_est.predict(np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1)))), groups=np.tile([1], (fg_size, 1)))
-			
+			# for i, a in enumerate(self.unique_actions):
+			for i in range(len(self.unique_actions)):
+				a = self.actions_onehot[i, :]
 
-		# 	plt.hist(self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), np.tile([0], (bg_size, 1))), label=a)
-		# plt.legend()
-		# plt.show()
+				Qtable[batch_bg['s_ids'], i] = self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), groups=np.tile([0], (bg_size, 1)))
+				Qtable[batch_fg['s_ids'], i] = self.q_est.predict(np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1)))), groups=np.tile([1], (fg_size, 1)))
+		elif self.estimator == 'gbm':
+			for i, a in enumerate(self.unique_actions):
+				# print(a, i)
+				Qtable[batch['s_ids'], i] = self.q_est.predict(np.hstack((batch['ns'], np.tile(a, (self.batch_size, 1)))))
         
 		return Qtable
 
@@ -168,10 +183,10 @@ class LMMFQIagent():
 				batch = self.sampleTuples()
 
 				# learn q_est with samples, targets from batch
-				batch_foreground, batch_background = self.fitQ(batch, Qtable)
+				batch, batch_foreground, batch_background = self.fitQ(batch, Qtable)
 
 				# update Q table for all s given new estimator
-				self.updateQtable(Qtable, batch_foreground, batch_background)
+				self.updateQtable(Qtable, batch, batch_foreground, batch_background)
 
 				# check divergence from last estimate
 				Qdist.append(mean_absolute_error(Qold, Qtable))
@@ -194,8 +209,6 @@ class LMMFQIagent():
 
 		optA = np.asarray(rescaled_optA)
 		print("Opta: ", optA)
-		# print("Fitting to training set")
-		# print("Optimal actions: ", optA)
 		groups = []
 		for g in self.training_set['ds']:
 			if g == 'foreground':
@@ -203,6 +216,9 @@ class LMMFQIagent():
 			else:
 				groups.append(0)
 		groups = np.expand_dims(groups, axis=1)
-		self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups)
+		self.optA = optA[:-1]
+		self.piE.fit(self.training_set['s'], optA[:-1])
+		print("Fit score: ", self.piE.score(self.training_set['s'], optA[:-1]))
+		#self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups)
 
 # print("Done Fitting")

@@ -167,45 +167,6 @@ class CFQIagent():
         print("Opta: ", optA)
         #print("Fitting to training set")
         #print("Optimal actions: ", optA)
+        self.optA = optA[:-1]
         self.piE.fit(self.training_set['s'], optA[:-1])
         #print("Done Fitting")
-    
-    def testPi(self, behavior):
-        accurate = 0
-        total = 0
-        
-        for tup in self.raw_test:
-            s = tup[0]
-            try:
-                a = tup[1]
-                a = np.concatenate(a).ravel()
-                a = list(a)
-            except:
-                a = tup[1]
-            # actions based on policy we learn
-            s = s.reshape((1, 10))
-            evalA = self.piE.predict(s)
-            
-            # predicted actions based on historical actions model
-            behavB = behavior.predict(s)
-            
-            if behavB <= 0.25:
-                behavB = 0
-            elif behavB <= 0.5:
-                behavB = 1
-            elif behavB <= 0.75:
-                behavB = 2
-            else:
-                behavB = 3
-            
-            # actual historical actions
-            actions = [[0, 0], [0, 1], [1, 0], [1, 1]]
-            behavA = actions.index(a)
-            
-            if behavA == behavB:
-                accurate += 1
-            total += 1
-        
-        return float(accurate)/total
-
-
