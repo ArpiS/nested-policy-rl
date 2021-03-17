@@ -114,7 +114,7 @@ class LMM():
             pass
 
         elif self.model == 'classification':
-            preds = np.argmax(preds, axis=1)
+            preds = np.argmax(preds, axis=1) - 2
 
         return preds
 
