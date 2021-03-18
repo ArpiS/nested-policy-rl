@@ -217,10 +217,10 @@ class LMMFQIagent():
 				batch = self.sampleTuples()
 
 				# learn q_est with samples, targets from batch
-				batch, _, _ = self.fitQ(batch, Qtable)
+				batch, batch_fg, batch_bg = self.fitQ(batch, Qtable)
 
 				# update Q table for all s given new estimator
-				self.updateQtable(Qtable, batch, None, None, iteration)
+				self.updateQtable(Qtable, batch, batch_fg, batch_bg, iteration)
 
 				# check divergence from last estimate
 				Qdist.append(mean_absolute_error(Qold, Qtable))
