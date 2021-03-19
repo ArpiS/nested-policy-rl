@@ -58,6 +58,7 @@ class LMMFQIagent():
 		s = pd.Series(np.arange(self.n_actions))
 		self.actions_onehot = pd.get_dummies(s).values
 		self.estimator = estimator
+		self.state_dim = state_dim
 
 		if self.estimator == 'gbm':
 			self.q_est = LGBMRegressor(n_estimators=50, silent=True)
@@ -93,7 +94,7 @@ class LMMFQIagent():
 
 		batch['s_ids'] = np.asarray(ids, dtype=int)
 		batch['ns_ids'] = np.asarray(ids, dtype=int) + 1
-
+		print(str(batch))
 		return batch
 
 	def fitQ(self, batch, Q):
@@ -148,8 +149,6 @@ class LMMFQIagent():
 			# old version
 			y = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
 			self.q_est.fit(x, y)
-			
-			
 
 			return batch, None, None
 		else:
@@ -239,11 +238,12 @@ class LMMFQIagent():
 
 	def getPi(self, Qtable):
 		optA = np.argmax(Qtable, axis=1)
-		rescaled_optA = []
-		for a in optA:
-			rescaled_optA.append(a - 2)
+		if self.state_dim == 3:
+			rescaled_optA = []
+			for a in optA:
+				rescaled_optA.append(a - 2)
 
-		optA = rescaled_optA
+			optA = rescaled_optA
 
 		print("Opta: ", optA)
 		fg_training = []
@@ -258,8 +258,8 @@ class LMMFQIagent():
 				bg_training.append(self.training_set['s'][i])
 				bg_optA.append(optA[i])
 
-		import ipdb; ipdb.set_trace()
-		# This doesn't work right now because fg_optA is all the same class and bg_optA is all the same class. 
+		#import ipdb; ipdb.set_trace()
+		# This doesn't on Pendulum env right now because fg_optA is all the same class and bg_optA is all the same class.
 		self.piE_foreground.fit(np.asarray(fg_training), fg_optA)
 		self.piE_background.fit(np.asarray(bg_training), bg_optA)
 

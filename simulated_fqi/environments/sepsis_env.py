@@ -17,6 +17,9 @@ NUM_ACTIONS = 24
 
 EPISODE_MEMORY = 10
 
+am_dir = "/Users/aishwaryamandyam/Documents/Research/BEE/contrastive-rl/contrastive-rl/simulated_fqi/environments/sepsis_model/"
+aj_dir = "./sepsis_model"
+
 
 features = ['ALBUMIN', 'ANION GAP', 'BANDS', 'BICARBONATE',
             'BILIRUBIN', 'BUN', 'CHLORIDE', 'CREATININE', 'DiasBP', 'Glucose',
@@ -39,7 +42,7 @@ class SepsisEnv(gym.Env):
 
     def __init__(self, starting_state=None, verbose=False):
         # module_path = os.path.dirname(__file__)
-        module_path = "./sepsis_model"
+        module_path = am_dir
         self.verbose = verbose
         self.state_model = keras.models.load_model(os.path.join(module_path, STATE_MODEL))
         self.termination_model = keras.models.load_model(os.path.join(module_path, TERMINATION_MODEL))

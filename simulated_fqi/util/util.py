@@ -70,11 +70,11 @@ def learnBehaviour(training_set, test_set, state_dim):
     behaviour_pi = LinearRegression()
     X = np.vstack((training_set['s'], test_set['s']))
     X = np.reshape(X, (-1, state_dim))
-    if state_dim < 10:
+    if state_dim ==3 or state_dim ==46:
         y = np.hstack((training_set['a'], test_set['a']))
     else:
         y = a2c(np.vstack((training_set['a'], test_set['a'])))
-    
+
     behaviour_pi.fit(X, y)
     pickle.dump(behaviour_pi, open(floc, 'wb'))
 

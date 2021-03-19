@@ -15,6 +15,7 @@ class FQIagent():
         self.iters = iters
         self.gamma = gamma
         self.batch_size = batch_size
+        self.state_dim = state_dim
         self.prioritize_a = prioritize
         self.training_set, self.test_set = util_fqi.construct_dicts(train_tuples, test_tuples)
         self.raw_test = test_tuples
@@ -134,6 +135,7 @@ class FQIagent():
             meanQtable += Qtable
         
         meanQtable = meanQtable / repeats
+        self.Qtable = meanQtable
         print('Learn policy')
         self.getPi(meanQtable)
         return Qdist
@@ -142,11 +144,12 @@ class FQIagent():
     def getPi(self, Qtable):
         optA = np.argmax(Qtable, axis=1)
 
-        rescaled_optA = []
-        for a in optA:
-            rescaled_optA.append(a - 2)
+        if self.state_dim == 3:
+            rescaled_optA = []
+            for a in optA:
+                rescaled_optA.append(a - 2)
 
-        optA = np.asarray(rescaled_optA)
+            optA = np.asarray(rescaled_optA)
         print("Opta: ", optA)
         #print("Fitting to training set")
         #print("Optimal actions: ", optA)
