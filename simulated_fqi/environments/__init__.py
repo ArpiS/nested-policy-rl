@@ -1,3 +1,4 @@
 from environments.transitions import generate_transitions_LDS
 from environments.transitions import generate_transitions_pendulum
 from environments.pendulum import PendulumEnv
+from environments.sepsis_env import SepsisEnv
