@@ -174,12 +174,12 @@ class SepsisEnv(gym.Env):
             n_iter = len(rewards)
             
             ## Form tuples
-            for ii in range(n_iter-1):
+            for ii in range(1, n_iter):
 
                 s = states[ii, :]
                 a = actions[ii]
                 ns = states[ii+1, :]
-                r = rewards[ii+1]
+                r = rewards[ii]
 
                 # Tuples are (state, action, next state, reward, group, index)
                 curr_tuple = (s, a, ns, np.asarray([r]), group, ii)
