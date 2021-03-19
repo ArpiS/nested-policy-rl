@@ -62,11 +62,12 @@ class LMMFQIagent():
 		if self.estimator == 'gbm':
 			self.q_est = LGBMRegressor(n_estimators=50, silent=True)
 		elif self.estimator == 'lmm':
-			self.q_est = LMM(model='regression')
+			self.q_est = LMM(model='regression', num_classes=self.n_actions)
 
 
 		# self.piE = LogisticRegression() #LMM(model='classification', num_classes=self.n_actions)
-		self.piE = LMM(model='classification', num_classes=self.n_actions)
+		self.piE_foreground = LogisticRegression()
+		self.piE_background = LogisticRegression()
 
 	def sub_actions(self):
 
@@ -242,21 +243,25 @@ class LMMFQIagent():
 		for a in optA:
 			rescaled_optA.append(a - 2)
 
+		optA = rescaled_optA
 
-		optA = np.asarray(rescaled_optA)
 		print("Opta: ", optA)
-		groups = []
-		for g in self.training_set['ds']:
+		fg_training = []
+		fg_optA = []
+		bg_training = []
+		bg_optA = []
+		for i, g in enumerate(self.training_set['ds']):
 			if g == 'foreground':
-				groups.append(1)
+				fg_training.append(self.training_set['s'][i])
+				fg_optA.append(optA[i])
 			else:
-				groups.append(0)
-		groups = np.expand_dims(groups, axis=1)
-		self.optA = optA[:-1]
-		
-		# self.piE.fit(self.training_set['s'], optA[:-1])
-		# print("Fit score: ", self.piE.score(self.training_set['s'], optA[:-1]))
-		self.piE.fit(np.asarray(self.training_set['s']), optA[:-1], groups)
+				bg_training.append(self.training_set['s'][i])
+				bg_optA.append(optA[i])
+
+		import ipdb; ipdb.set_trace()
+		# This doesn't work right now because fg_optA is all the same class and bg_optA is all the same class. 
+		self.piE_foreground.fit(np.asarray(fg_training), fg_optA)
+		self.piE_background.fit(np.asarray(bg_training), bg_optA)
 
 # print("Done Fitting")
 
