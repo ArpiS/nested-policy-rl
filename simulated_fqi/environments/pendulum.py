@@ -5,6 +5,7 @@ import numpy as np
 from os import path
 from os.path import join as pjoin
 
+
 ASSETS_DIR = "../../gym/gym/envs/classic_control/assets"
 
 class PendulumEnv(gym.Env):
