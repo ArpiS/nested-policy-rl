@@ -7,10 +7,10 @@ from collections import deque
 import pandas as pd
 from gym import spaces
 
-STATE_MODEL = "model/sepsis_states.model"
-TERMINATION_MODEL = "model/sepsis_termination.model"
-OUTCOME_MODEL = "model/sepsis_outcome.model"
-STARTING_STATES_VALUES = "model/sepsis_starting_states.npz"
+STATE_MODEL = "sepsis_states.model"
+TERMINATION_MODEL = "sepsis_termination.model"
+OUTCOME_MODEL = "sepsis_outcome.model"
+STARTING_STATES_VALUES = "sepsis_starting_states.npz"
 
 NUM_FEATURES = 48  # 46 + action + state index
 NUM_ACTIONS = 24
@@ -38,7 +38,8 @@ class SepsisEnv(gym.Env):
     metadata = {'render.modes': ['ansi']}
 
     def __init__(self, starting_state=None, verbose=False):
-        module_path = os.path.dirname(__file__)
+        # module_path = os.path.dirname(__file__)
+        module_path = "./sepsis_model"
         self.verbose = verbose
         self.state_model = keras.models.load_model(os.path.join(module_path, STATE_MODEL))
         self.termination_model = keras.models.load_model(os.path.join(module_path, TERMINATION_MODEL))
