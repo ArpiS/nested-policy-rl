@@ -179,11 +179,11 @@ class SepsisEnv(gym.Env):
                 s = states[ii, :]
                 a = actions[ii]
                 ns = states[ii+1, :]
-                r = rewards[ii]
+                r = rewards[ii+1]
 
                 # Tuples are (state, action, next state, reward, group, index)
                 curr_tuple = (s, a, ns, np.asarray([r]), group, ii)
-                tuples.extend(curr_tuple)
+                tuples.append(curr_tuple)
 
         return tuples
 
