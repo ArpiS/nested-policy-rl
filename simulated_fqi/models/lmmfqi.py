@@ -94,7 +94,6 @@ class LMMFQIagent():
 
 		batch['s_ids'] = np.asarray(ids, dtype=int)
 		batch['ns_ids'] = np.asarray(ids, dtype=int) + 1
-		print(str(batch))
 		return batch
 
 	def fitQ(self, batch, Q):
