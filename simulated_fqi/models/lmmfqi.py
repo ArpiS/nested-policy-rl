@@ -208,7 +208,7 @@ class LMMFQIagent():
 			Qdist = []
 
 			# print('Run FQI')
-			for iteration in range(self.iters):
+			for k, iteration in enumerate(tqdm.tqdm(range(self.iters))):
 				# copy q-table
 				Qold = cp.deepcopy(Qtable)
 
