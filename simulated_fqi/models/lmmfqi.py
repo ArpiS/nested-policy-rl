@@ -165,8 +165,8 @@ class LMMFQIagent():
 			for i in range(len(self.unique_actions)):
 				a = self.actions_onehot[i, :]
 
-				Qtable[batch_bg['s_ids'], i] = self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), groups=np.tile([0], (bg_size, 1)))
-				Qtable[batch_fg['s_ids'], i] = self.q_est.predict(np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1)))), groups=np.tile([1], (fg_size, 1)))
+				Qtable[batch_bg['s_ids'], i] = self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), groups=np.tile([0], (bg_size)))
+				Qtable[batch_fg['s_ids'], i] = self.q_est.predict(np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1)))), groups=np.tile([1], (fg_size)))
 		elif self.estimator == 'gbm':
 			for i, a in enumerate(self.unique_actions):
 				# import ipdb; ipdb.set_trace()
@@ -244,7 +244,6 @@ class LMMFQIagent():
 
 			optA = rescaled_optA
 
-		print("Opta: ", optA)
 		fg_training = []
 		fg_optA = []
 		bg_training = []
@@ -259,6 +258,8 @@ class LMMFQIagent():
 
 		#import ipdb; ipdb.set_trace()
 		# This doesn't on Pendulum env right now because fg_optA is all the same class and bg_optA is all the same class.
+		print(str(fg_optA))
+		print(str(bg_optA))
 		self.piE_foreground.fit(np.asarray(fg_training), fg_optA)
 		self.piE_background.fit(np.asarray(bg_training), bg_optA)
 
