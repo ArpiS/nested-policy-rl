@@ -6,8 +6,6 @@ import pandas as pd
 import seaborn as sns
 from scipy import optimize, special
 import ipdb
-import torch
-import torch.nn as nn
 import pandas as pd
 import ipdb
 
