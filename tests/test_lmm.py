@@ -62,7 +62,35 @@ def test_lmm_regression():
         
         assert np.allclose(fitted_values, y, atol=1e-4)
 
+def test_lmm_regression_project():
+
+    for _ in range(20):
+
+        n = 200
+        p = 10
+        coefs_shared_true = np.random.normal(size=(p+1))
+        coefs_fg_true = np.random.normal(size=(p+1))
+        X = np.random.normal(0, 1, size=(n, p))
+
+        groups = np.random.binomial(n=1, p=0.5, size=n)
+
+        # Add columns of ones for intercept
+        X_ext = np.hstack([np.ones((n, 1)), X])
+        y = X_ext @ coefs_shared_true + (X_ext @ coefs_fg_true) * groups
+
+        # Fit LMM
+        lmm = LMM(model='regression', is_pendulum=False)
+        lmm.fit(X, y, groups=groups, verbose=False, method="project")
+
+        assert np.allclose(lmm.coefs_shared, coefs_shared_true, atol=1e-4)
+        assert np.allclose(lmm.coefs_fg, coefs_fg_true, atol=1e-4)
+        
+        fitted_values = lmm.predict(X, groups=groups)
+        
+        assert np.allclose(fitted_values, y, atol=1e-4)
+
 if __name__ == "__main__":
+    test_lmm_regression_project()
     test_lmm_classification()
     test_lmm_regression()
     
