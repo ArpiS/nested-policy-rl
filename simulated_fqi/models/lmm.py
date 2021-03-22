@@ -85,8 +85,11 @@ class LMM():
         elif method == "project":
 
             # Regression on all samples
-            reg = LinearRegression().fit(X, y)
-            coefs_shared = reg.coef_
+            X_bg = X[groups == 0]
+            y_bg = y[groups == 0]
+            reg = LinearRegression().fit(X_bg, y_bg)
+            all_coefs_shared = np.concatenate([[reg.intercept_], reg.coef_])
+            coefs_shared = all_coefs_shared
 
             # Get residuals for foreground group
             X_fg = X[groups == 1]
@@ -96,7 +99,8 @@ class LMM():
 
             # Regress residuals on the foreground
             reg = LinearRegression().fit(X_fg, X_residuals)
-            coefs_fg = reg.coef_
+            all_coefs_fg = np.concatenate([[reg.intercept_], reg.coef_])
+            coefs_fg = all_coefs_fg
 
             self.coefs_shared = coefs_shared
             self.coefs_fg = coefs_fg
