@@ -6,6 +6,7 @@ import os
 from collections import deque
 import pandas as pd
 from gym import spaces
+from random import randrange
 
 STATE_MODEL = "sepsis_states.model"
 TERMINATION_MODEL = "sepsis_termination.model"
@@ -87,7 +88,7 @@ class SepsisEnv(gym.Env):
         termination_state = termination_categories[np.argmax(termination)]
         outcome_state = outcome_categories[np.argmax(outcome)]
 
-        reward = 0
+        reward = 1 + randrange(4)
         done = False
 
         if termination_state == 'done':
