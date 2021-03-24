@@ -11,13 +11,14 @@ from sklearn.ensemble import ExtraTreesRegressor, ExtraTreesClassifier
 from lightgbm import LGBMRegressor, LGBMClassifier
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.metrics import log_loss, f1_score, precision_score, recall_score, accuracy_score
-#import matplotlib.pyplot as plt
-#import matplotlib.ticker as ticker
+# import matplotlib.pyplot as plt
+# import matplotlib.ticker as ticker
 import collections
-#import shap
+# import shap
 import seaborn as sns
 import random
 from sklearn.linear_model import LinearRegression, LogisticRegression
+
 np.seterr(all="ignore")
 import matplotlib.pyplot as plt
 import tqdm
@@ -27,9 +28,11 @@ import pandas as pd
 import statsmodels.formula.api as smf
 import numpy as np
 import sys
+
 sys.path.append('../models/')
 from lmm import LMM
 import util as util_fqi
+from contrastive_deepnet import ContrastiveNet, ContrastiveDataset
 
 
 class LMMFQIagent():
@@ -64,7 +67,8 @@ class LMMFQIagent():
 			self.q_est = LGBMRegressor(n_estimators=50, silent=True)
 		elif self.estimator == 'lmm':
 			self.q_est = LMM(model='regression', num_classes=self.n_actions)
-
+		elif self.estimator == 'linnet':
+			self.q_est = ContrastiveNet(model_name='linnet')
 
 		# self.piE = LogisticRegression() #LMM(model='classification', num_classes=self.n_actions)
 		self.piE_foreground = LogisticRegression()
@@ -90,7 +94,7 @@ class LMMFQIagent():
 		batch = {}
 		for k in self.training_set.keys():
 			batch[k] = np.asarray(self.training_set[k], dtype=object)[ids]
-		batch['r'] = batch['r'] #np.dot(batch['r'], self.reward_weights)
+		batch['r'] = batch['r']  # np.dot(batch['r'], self.reward_weights)
 
 		batch['s_ids'] = np.asarray(ids, dtype=int)
 		batch['ns_ids'] = np.asarray(ids, dtype=int) + 1
@@ -125,15 +129,13 @@ class LMMFQIagent():
 
 			s = pd.Series(batch['a'])
 			as_onehot = pd.get_dummies(s).values
-			x_shared =  np.hstack((np.asarray(batch['s']), as_onehot))
+			x_shared = np.hstack((np.asarray(batch['s']), as_onehot))
 			# x_shared =  np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
 
 			y_shared = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
-			groups = np.expand_dims(groups, axis=1)
-			# plt.scatter(x_shared[:, -1], y_shared)
-			# plt.show()
 			self.q_est.fit(x_shared, y_shared, groups)
 			return batch, batch_foreground, batch_background
+
 		elif self.estimator == 'gbm':
 			# input = [state action]
 			x = np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
@@ -150,8 +152,40 @@ class LMMFQIagent():
 			self.q_est.fit(x, y)
 
 			return batch, None, None
+
+		elif self.estimator == 'linnet':
+			batch_foreground = {}
+			batch_background = {}
+			groups = []
+			elts = ['s', 's_ids', 'ns']
+			for el in elts:
+				batch_foreground[el] = []
+				batch_background[el] = []
+
+			for i in range(len(batch['s_ids'])):
+				if batch['ds'][i] == 'foreground':
+					batch_foreground['s_ids'].append(batch['s_ids'][i])
+					batch_foreground['s'].append(batch['s'][i])
+					batch_foreground['ns'].append(batch['ns'][i])
+				else:
+					batch_background['s_ids'].append(batch['s_ids'][i])
+					batch_background['s'].append(batch['s'][i])
+					batch_background['ns'].append(batch['ns'][i])
+
+			for i in range(len(batch['s_ids'])):
+				if batch['ds'][i] == 'foreground':
+					groups.append(1)
+				else:
+					groups.append(0)
+			ds = ContrastiveDataset(batch, from_batch=True)
+			X = ds.X
+			y = ds.y
+			y = np.squeeze(y) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
+			self.q_est.fit(X, y)
+			return None, batch_background, batch_foreground
+
 		else:
-			raise Exception("Q_est must be either an LGBM regressor or LMM")
+			raise Exception("Q_est must be either an LGBM regressor, LMM, or Linear Net")
 
 	def updateQtable(self, Qtable, batch, batch_fg, batch_bg, iter_num):
 		# Update for foregound using just foreground
@@ -164,36 +198,32 @@ class LMMFQIagent():
 			# for i, a in enumerate(self.unique_actions):
 			for i in range(len(self.unique_actions)):
 				a = self.actions_onehot[i, :]
+				Qtable[batch_bg['s_ids'], i] = self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))),
+																  groups=np.tile([0], (bg_size)))
+				Qtable[batch_fg['s_ids'], i] = self.q_est.predict(np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1)))),
+																  groups=np.tile([1], (fg_size)))
 
-				Qtable[batch_bg['s_ids'], i] = self.q_est.predict(np.hstack((batch_bg['ns'], np.tile(a, (bg_size, 1)))), groups=np.tile([0], (bg_size)))
-				Qtable[batch_fg['s_ids'], i] = self.q_est.predict(np.hstack((batch_fg['ns'], np.tile(a, (fg_size, 1)))), groups=np.tile([1], (fg_size)))
 		elif self.estimator == 'gbm':
 			for i, a in enumerate(self.unique_actions):
 				# import ipdb; ipdb.set_trace()
 				Qtable[batch['s_ids'], i] = self.q_est.predict(np.hstack((batch['ns'], np.tile(a, (self.batch_size, 1)))))
 
-			## Insert observed reward to appropriate slots in Q table
-			##      NOTE: We'll add the max across actions for the next state below
-			##  	IMPORTANT: THIS DOESN'T WORK FOR BATCH SIZES NOW
-		# 	action_idxs = (batch['a'] + 2).astype(int)
-		# 	bool_idx = np.vstack([np.arange(5) == x for x in action_idxs])
-		# 	Qtable[:-1, :][bool_idx] = np.squeeze(batch['r'])
-				
-		# 	# If this is the first iteration, we haven't fit q_est yet
-		# 	## In this case, just return the table for now
-		# 	if iter_num == 0:
-		# 		return Qtable
-		# 	## Get predicted rewards for each action based on the next state
-		# 	predicted_rewards = np.zeros((batch['ns'].shape[0], self.n_actions))
-		# 	for i, a in enumerate(self.unique_actions):
-		# 		predicted_rewards[:, i] = self.q_est.predict(np.hstack((batch['ns'], np.tile(a, (self.batch_size, 1)))))
-						
-		# ## Add these values to the Q table
-		# argmax_action_idxs = np.argmax(predicted_rewards, axis=1)
-		# bool_idx = np.vstack([np.arange(5) == x for x in argmax_action_idxs])
-		# Qtable[:-1, :][bool_idx] += self.gamma * predicted_rewards[bool_idx]
-		# import ipdb; ipdb.set_trace()
-		
+		elif self.estimator == 'linnet':
+			for i in range(len(self.unique_actions)):
+				for j in range(len(batch_bg['s_ids'])):
+					s = batch_bg['ns'][j]
+					a = self.unique_actions[i]
+					blank_s = [0] * 46
+					blank_a = [0]
+					s_a = np.hstack((s, a, blank_s, blank_a))
+					Qtable[j, i] = self.q_est.predict(s_a.astype('float32'))
+			for i in range(len(self.unique_actions)):
+				for j in range(len(batch_fg['s_ids'])):
+					s = batch_fg['ns'][j]
+					a = self.unique_actions[i]
+					s_a = np.hstack((s, a, s, a))
+					Qtable[j, i] = self.q_est.predict(s_a.astype('float32'))
+
 		return Qtable
 
 	def runFQI(self, repeats=10):
@@ -223,7 +253,6 @@ class LMMFQIagent():
 
 				# check divergence from last estimate
 				Qdist.append(mean_absolute_error(Qold, Qtable))
-
 
 			# plt.plot(Qdist)
 			meanQtable += Qtable
@@ -256,7 +285,7 @@ class LMMFQIagent():
 				bg_training.append(self.training_set['s'][i])
 				bg_optA.append(optA[i])
 
-		#import ipdb; ipdb.set_trace()
+		# import ipdb; ipdb.set_trace()
 		# This doesn't on Pendulum env right now because fg_optA is all the same class and bg_optA is all the same class.
 		print(str(fg_optA))
 		print(str(bg_optA))
@@ -264,7 +293,3 @@ class LMMFQIagent():
 		self.piE_background.fit(np.asarray(bg_training), bg_optA)
 
 # print("Done Fitting")
-
-
-
-

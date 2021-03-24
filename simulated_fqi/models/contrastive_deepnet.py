@@ -18,18 +18,16 @@ from numpy import linalg as LA
 
 
 class ContrastiveDataset(Dataset):
-	def __init__(self, tuples):
-		self.tuples = tuples
+	def __init__(self, batch, from_batch=False):
+		self.from_batch = from_batch
 
-		def construct_pairs(tuples):
+		def construct_pairs_from_tuples(tuples):
 			X = []
 			y = []
 			for t in self.tuples:
 				if t[4] == 'background':
-					one_hot_a = [0] * 25
 					s = t[0]
 					a = t[1]
-					one_hot_a[a] = 1
 					r = t[3][0]
 					if r == 0:
 						r = 0.00000001
@@ -37,26 +35,58 @@ class ContrastiveDataset(Dataset):
 					blank_s = [0] * 46
 					blank_a = [0]
 					s_a = np.hstack((s, a, blank_s, blank_a))
-					X.append(s_a)
+					X.append(s_a.astype('float32'))
 					y.append(r)
 				else:
-					one_hot_a = [0] * 25
 					s = t[0]
 					a = t[1]
-					one_hot_a[a] = 1
 					r = t[3][0]
 					if r == 0:
 						r = 0.00000001
 
 					s_a = np.hstack((s, a, s, a))
-					X.append(s_a)
+					X.append(s_a.astype('float32'))
 					y.append(r)
 			return X, y
 
-		self.X, self.y = construct_pairs(self.tuples)
+		def construct_pairs_from_batch(batch):
+			X = []
+			y = []
+			for i in range(len(batch['s'])):
+				if batch['ds'][i] == 'background':
+					s = batch['s'][i]
+					a = batch['a'][i]
+					r = batch['r'][i]
+					if r == 0:
+						r = 0.0000001
+					blank_s = [0] * 46
+					blank_a = [0]
+					s_a = np.hstack((s, a, blank_s, blank_a))
+					X.append(s_a.astype('float32'))
+					y.append(r)
+				else:
+					s = batch['s'][i]
+					a = batch['a'][i]
+					r = batch['r'][i]
+					if r == 0:
+						r = 0.0000001
+					s_a = np.hstack((s, a, s, a))
+					X.append(s_a.astype('float32'))
+					y.append(r)
+			return X, y
+
+		if from_batch:
+			self.tuples = batch
+			self.X, self.y = construct_pairs_from_batch(self.tuples)
+		else:
+			self.tuples = batch
+			self.X, self.y = construct_pairs_from_tuples(self.tuples)
 
 	def __len__(self):
-		return len(self.tuples)
+		if self.from_batch:
+			return len(self.tuples['s'])
+		else:
+			return len(self.tuples)
 
 	def __getitem__(self, idx):
 		return (self.X[idx], self.y[idx])
@@ -100,15 +130,15 @@ def weights_init(m):
 
 
 class ContrastiveNet():
-	def __init__(self, model, num_epochs=2):
-		if model == 'convnet':
+	def __init__(self, model_name, num_epochs=2):
+		if model_name == 'convnet':
 			self.model = ConvContrastiveNet()
-		elif model == 'linnet':
+		elif model_name == 'linnet':
 			self.model = LinearContrastiveNet()
 		else:
 			raise Exception("Model must be convnet or linnet")
 
-		model.apply(weights_init)
+		self.model.apply(weights_init)
 		self.num_epochs = num_epochs
 
 	def fit(self, X, y):
@@ -116,7 +146,9 @@ class ContrastiveNet():
 		optimizer = SGD(self.model.parameters(), lr=0.001)
 		criterion = nn.MSELoss()
 		for epoch in range(self.num_epochs):
-			for i, (s_a, r) in zip(X, y):
+			for i in range(len(y)):
+				s_a = X[i]
+				r = y[i]
 				if self.model.name == "ConvContrastiveNet":
 					s_a = np.reshape(s_a, (1, 1, 94))
 				s_a = torch.Tensor(s_a)
@@ -126,13 +158,10 @@ class ContrastiveNet():
 				train_loss.backward()
 				optimizer.step()
 
-	def predict(self, X, y):
+	def predict(self, s_a):
 		self.model.eval()
-		preds = []
-		for (s_a, r) in zip(X, y):
-			if self.model.name == "ConvContrastiveNet":
-				s_a = np.reshape(s_a, (1, 1, 94))
-			s_a = torch.Tensor(s_a)
-			pred_r = self.model(s_a)
-			preds.append(pred_r.detach().cpu().numpy().item())
-		return preds
+		if self.model.name == "ConvContrastiveNet":
+			s_a = np.reshape(s_a, (1, 1, 94))
+		s_a = torch.Tensor(s_a)
+		pred_r = self.model(s_a)
+		return pred_r.detach().cpu().numpy().item()
