@@ -211,17 +211,21 @@ class LMMFQIagent():
 		elif self.estimator == 'linnet':
 			for i in range(len(self.unique_actions)):
 				for j in range(len(batch_bg['s_ids'])):
+					one_hot_a = [0]*25
 					s = batch_bg['ns'][j]
 					a = self.unique_actions[i]
+					one_hot_a[a] = 1
 					blank_s = [0] * 46
-					blank_a = [0]
-					s_a = np.hstack((s, a, blank_s, blank_a))
+					blank_a = [0] * 25
+					s_a = np.hstack((s, one_hot_a, blank_s, blank_a))
 					Qtable[j, i] = self.q_est.predict(s_a.astype('float32'))
 			for i in range(len(self.unique_actions)):
 				for j in range(len(batch_fg['s_ids'])):
+					one_hot_a = [0]*25
 					s = batch_fg['ns'][j]
 					a = self.unique_actions[i]
-					s_a = np.hstack((s, a, s, a))
+					one_hot_a[a] = 1
+					s_a = np.hstack((s, one_hot_a, s, one_hot_a))
 					Qtable[j, i] = self.q_est.predict(s_a.astype('float32'))
 
 		return Qtable

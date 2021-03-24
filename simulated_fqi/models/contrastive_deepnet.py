@@ -26,25 +26,29 @@ class ContrastiveDataset(Dataset):
 			y = []
 			for t in self.tuples:
 				if t[4] == 'background':
+					one_hot_a = [0]*25
 					s = t[0]
 					a = t[1]
+					one_hot_a[a] = 0
 					r = t[3][0]
 					if r == 0:
 						r = 0.00000001
 
 					blank_s = [0] * 46
-					blank_a = [0]
-					s_a = np.hstack((s, a, blank_s, blank_a))
+					blank_a = [0] * 25
+					s_a = np.hstack((s, one_hot_a, blank_s, blank_a))
 					X.append(s_a.astype('float32'))
 					y.append(r)
 				else:
+					one_hot_a = [0]*25
 					s = t[0]
 					a = t[1]
+					one_hot_a[a] = 1
 					r = t[3][0]
 					if r == 0:
 						r = 0.00000001
 
-					s_a = np.hstack((s, a, s, a))
+					s_a = np.hstack((s, one_hot_a, s, one_hot_a))
 					X.append(s_a.astype('float32'))
 					y.append(r)
 			return X, y
@@ -54,23 +58,27 @@ class ContrastiveDataset(Dataset):
 			y = []
 			for i in range(len(batch['s'])):
 				if batch['ds'][i] == 'background':
+					one_hot_a = [0]*25
 					s = batch['s'][i]
 					a = batch['a'][i]
+					one_hot_a[a] = 1
 					r = batch['r'][i]
 					if r == 0:
 						r = 0.0000001
 					blank_s = [0] * 46
-					blank_a = [0]
-					s_a = np.hstack((s, a, blank_s, blank_a))
+					blank_a = [0] * 25
+					s_a = np.hstack((s, one_hot_a, blank_s, blank_a))
 					X.append(s_a.astype('float32'))
 					y.append(r)
 				else:
+					one_hot_a = [0]*25
 					s = batch['s'][i]
 					a = batch['a'][i]
+					one_hot_a[a] = 1
 					r = batch['r'][i]
 					if r == 0:
 						r = 0.0000001
-					s_a = np.hstack((s, a, s, a))
+					s_a = np.hstack((s, one_hot_a, s, one_hot_a))
 					X.append(s_a.astype('float32'))
 					y.append(r)
 			return X, y
@@ -96,8 +104,8 @@ class LinearContrastiveNet(nn.Module):
 	def __init__(self):
 		super(LinearContrastiveNet, self).__init__()
 		self.name = "LinearContrastiveNet"
-		self.fc1 = nn.Linear(94, 10)
-		self.fc2 = nn.Linear(10, 1)
+		self.fc1 = nn.Linear(142, 50)
+		self.fc2 = nn.Linear(50, 1)
 
 	def forward(self, x):
 		x = self.fc1(x)
