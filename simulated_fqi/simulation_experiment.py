@@ -1,7 +1,8 @@
 import numpy as np
 import os, sys
 sys.path.append('environments/')
-from generate_pendulum_tuples import tuples
+from generate_pendulum_tuples import tuples as tuples_pendulum
+from generate_cartpole_tuples import tuples as tuples_cartpole
 import numpy as np
 import pandas as pd
 import random
@@ -35,9 +36,9 @@ import json
 import util as util_fqi
 import sys
 sys.path.append('models/')
-from lmmfqi import LMMFQIagent
+# from lmmfqi import LMMFQIagent
 from fqi import FQIagent
-from cfqi import CFQIagent
+# from cfqi import CFQIagent
 import gym
 from gym import spaces
 from gym.utils import seeding
@@ -45,26 +46,113 @@ import numpy as np
 from os import path
 from os.path import join as pjoin
 from pendulum import PendulumEnv
+from cartpole import CartPoleEnv
+from cartpole_regulator import CartPoleRegulatorEnv
 
 
-bg_tuples, fg_tuples = tuples(n_trajectories=10)
+enviroment = "pendulum"
+
+if enviroment == "pendulum":
+	env = PendulumEnv()
+	tuples = tuples_pendulum
+	state_dim = 3
+elif enviroment == "cartpole":
+	env = CartPoleRegulatorEnv()
+	tuples = tuples_cartpole
+	state_dim = 4
+
+
+bg_tuples, fg_tuples = tuples(n_trajectories=300)
 all_tuples = bg_tuples + fg_tuples
 random.shuffle(all_tuples)
 split = 0.8
 train_tuples = all_tuples[:int(split*len(all_tuples))]
 test_tuples = all_tuples[int(split*len(all_tuples)):]
 
-
 training_set, test_set = util_fqi.construct_dicts(train_tuples, test_tuples)
 
+agent = FQIagent(train_tuples=train_tuples, test_tuples=test_tuples, gamma=0.95, state_dim=state_dim, batch_size=100, iters=30, estimator="gbm")
+Q_dist = agent.runNFQI()
+# Q_dist = agent.runFQI(repeats=1)
 
-lmm_agent = LMMFQIagent(train_tuples=train_tuples, test_tuples=test_tuples, gamma=0.0, state_dim=3, batch_size=1000, iters=2)
-Q_dist = lmm_agent.runFQI(repeats=1)
-plt.plot(Q_dist, label= "LMMFQI")
-plt.xlabel("Iteration")
-plt.ylabel("Q Estimate")
-plt.legend()
+
+# Run fitted model online on test data
+cartpole = CartPoleRegulatorEnv()
+curr_state = env.reset()
+
+n_test_trajectories = 5
+
+### FQI agent
+trajectory_lengths_fqi = []
+trajectory_length = 0
+for _ in range(n_test_trajectories):
+	done = False
+	ii = 0
+	env.reset()
+	while not done and ii < 100:
+		trajectory_length += 1
+
+		# curr_action = agent.piE.predict(np.expand_dims(curr_state, 0))[0]
+		curr_action = agent.predictNFQI(curr_state)
+		print(curr_action)
+		# import ipdb; ipdb.set_trace()
+
+		curr_state, curr_reward, done, _ = env.step(np.array([curr_action-2]))
+
+		if done:
+			env.reset()
+			trajectory_lengths_fqi.append(trajectory_length)
+			trajectory_length = 0
+
+		env.render()
+		ii += 1
+
+import ipdb; ipdb.set_trace()
+
+
+### Random agent
+cartpole = CartPoleRegulatorEnv()
+curr_state = cartpole.reset()
+
+trajectory_lengths_random = []
+
+for _ in range(n_test_trajectories):
+	done = False
+	trajectory_length = 0
+	while not done:
+		trajectory_length += 1
+
+		curr_action = cartpole.action_space.sample()
+		curr_state, curr_reward, done, _ = cartpole.step(np.array([curr_action]))
+
+		if done:
+			cartpole.reset()
+			trajectory_lengths_random.append(trajectory_length)
+			trajectory_length = 0
+
+
+
+results_df = pd.DataFrame({"fqi": trajectory_lengths_fqi, "random": trajectory_lengths_random})
+results_df = pd.melt(results_df)
+sns.boxplot(data=results_df, x="variable", y="value")
+plt.xlabel("Agent")
+plt.ylabel("Length of cartpole trajectories")
 plt.show()
+import ipdb; ipdb.set_trace()
+
+### Oracle agent
+for ii in range(1, n_test_iter):
+
+	agent
+	# Randomly sample an action
+	a = pend.action_space.sample()
+
+	# Perform the action
+	s, cost, _, _ = pend.step(a)
+	states[ii, :] = s
+	costs[ii] = cost
+
+import ipdb; ipdb.set_trace()
 
 
 
