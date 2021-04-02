@@ -1,8 +1,8 @@
 import numpy as np
 import os, sys
 sys.path.append('environments/')
-from generate_pendulum_tuples import tuples as tuples_pendulum
-from generate_cartpole_tuples import tuples as tuples_cartpole
+# from generate_pendulum_tuples import tuples as tuples_pendulum
+# from generate_cartpole_tuples import tuples as tuples_cartpole
 import numpy as np
 import pandas as pd
 import random
@@ -37,7 +37,8 @@ import util as util_fqi
 import sys
 sys.path.append('models/')
 # from lmmfqi import LMMFQIagent
-from fqi import FQIagent
+# from fqi import FQIagent
+from nfqi import NFQIagent
 # from cfqi import CFQIagent
 import gym
 from gym import spaces
@@ -46,32 +47,32 @@ import numpy as np
 from os import path
 from os.path import join as pjoin
 from pendulum import PendulumEnv
-from cartpole import CartPoleEnv
-from cartpole_regulator import CartPoleRegulatorEnv
+# from cartpole import CartPoleEnv
+from cartpole import CartPoleRegulatorEnv
 
 
-enviroment = "pendulum"
+enviroment = "cartpole"
 
 if enviroment == "pendulum":
 	env = PendulumEnv()
-	tuples = tuples_pendulum
 	state_dim = 3
+	unique_actions = np.array([-2, -1, 0, 1, 2])
 elif enviroment == "cartpole":
 	env = CartPoleRegulatorEnv()
-	tuples = tuples_cartpole
 	state_dim = 4
+	unique_actions = np.array([0, 1])
 
 
-bg_tuples, fg_tuples = tuples(n_trajectories=300)
-all_tuples = bg_tuples + fg_tuples
-random.shuffle(all_tuples)
-split = 0.8
-train_tuples = all_tuples[:int(split*len(all_tuples))]
-test_tuples = all_tuples[int(split*len(all_tuples)):]
+# bg_tuples, fg_tuples = tuples(n_trajectories=400)
+# all_tuples = bg_tuples + fg_tuples
+# random.shuffle(all_tuples)
+# split = 0.8
+# train_tuples = all_tuples[:int(split*len(all_tuples))]
+# test_tuples = all_tuples[int(split*len(all_tuples)):]
 
-training_set, test_set = util_fqi.construct_dicts(train_tuples, test_tuples)
+# training_set, test_set = util_fqi.construct_dicts(train_tuples, test_tuples)
 
-agent = FQIagent(train_tuples=train_tuples, test_tuples=test_tuples, gamma=0.95, state_dim=state_dim, batch_size=100, iters=30, estimator="gbm")
+agent = NFQIagent(unique_actions=unique_actions, gamma=0.5, state_dim=state_dim, iters=400)
 Q_dist = agent.runNFQI()
 # Q_dist = agent.runFQI(repeats=1)
 
@@ -97,7 +98,9 @@ for _ in range(n_test_trajectories):
 		print(curr_action)
 		# import ipdb; ipdb.set_trace()
 
-		curr_state, curr_reward, done, _ = env.step(np.array([curr_action-2]))
+		if enviroment == "pendulum":
+			curr_action = np.array([curr_action - 1])
+		curr_state, curr_reward, done, _ = env.step(curr_action)
 
 		if done:
 			env.reset()

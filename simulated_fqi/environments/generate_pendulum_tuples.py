@@ -18,12 +18,12 @@ def tuples(n_trajectories=100):
 	for _ in range(n_trajectories):
 		### Background
 		pend = PendulumEnv(m=1.0)
-		curr_bg_tuples = pend.generate_tuples(n_iter=101, group="background")
+		curr_bg_tuples = pend.generate_tuples(n_iter=21, group="background")
 		bg_tuples.extend(curr_bg_tuples)
 
 		## Foreground
-		pend = PendulumEnv(m=5.0)
-		curr_fg_tuples = pend.generate_tuples(n_iter=101, group="foreground")
+		pend = PendulumEnv(m=1.0)
+		curr_fg_tuples = pend.generate_tuples(n_iter=21, group="foreground")
 		fg_tuples.extend(curr_fg_tuples)
 		
 	return bg_tuples, fg_tuples
