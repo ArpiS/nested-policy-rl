@@ -60,11 +60,11 @@ class CartEnv(gym.Env):
         self.kinematics_integrator = "euler"
         self.unique_actions = np.array([0, 1])
         self.group = group
-        self.state_dim = 4
+        self.state_dim = 1
 
         assert mode in ["train", "eval"]
         self.mode = mode
-        self.max_steps = 100 if mode == "train" else 3000
+        self.max_steps = 300 if mode == "train" else 3000
 
         # Success state
         # TODO(seungjaeryanlee): Verify pole angle success state
@@ -84,9 +84,7 @@ class CartEnv(gym.Env):
         high = np.array(
             [
                 self.x_threshold * 2,
-                np.finfo(np.float32).max,
-                self.theta_threshold_radians * 2,
-                np.finfo(np.float32).max,
+                np.finfo(np.float32).max
             ]
         )
 
@@ -102,33 +100,33 @@ class CartEnv(gym.Env):
         return [seed]
 
     def _compute_next_state(self, state, action):
-        x, x_dot, theta, theta_dot = state
+        x, x_dot = state
         # force = self.force_mag if action == 1 else -self.force_mag
         force = self.force_mag if action == 1 else 0
-        force -= 6
-        costheta = math.cos(theta)
-        sintheta = math.sin(theta)
-        temp = (
-            force + self.polemass_length * theta_dot * theta_dot * sintheta
-        ) / self.total_mass
-        thetaacc = (self.gravity * sintheta - costheta * temp) / (
-            self.length
-            * (4.0 / 3.0 - self.masspole * costheta * costheta / self.total_mass)
-        )
+        force -= 9
+        # costheta = math.cos(theta)
+        # sintheta = math.sin(theta)
+        # temp = (
+        #     force + self.polemass_length * theta_dot * theta_dot * sintheta
+        # ) / self.total_mass
+        # thetaacc = (self.gravity * sintheta - costheta * temp) / (
+        #     self.length
+        #     * (4.0 / 3.0 - self.masspole * costheta * costheta / self.total_mass)
+        # )
         # xacc = temp - self.polemass_length * thetaacc * costheta / self.total_mass
         xacc = force / self.total_mass
         if self.kinematics_integrator == "euler":
             x = x + self.tau * x_dot
             x_dot = x_dot + self.tau * xacc
-            theta = theta + self.tau * theta_dot
-            theta_dot = theta_dot + self.tau * thetaacc
+            # theta = theta + self.tau * theta_dot
+            # theta_dot = theta_dot + self.tau * thetaacc
         else:  # semi-implicit euler
             x_dot = x_dot + self.tau * xacc
             x = x + self.tau * x_dot
             theta_dot = theta_dot + self.tau * thetaacc
             theta = theta + self.tau * theta_dot
 
-        return x, x_dot, theta, theta_dot
+        return x, x_dot
 
     # NOTE(seungjaeryanlee): done is True only when the episode terminated due
     #                        to entering forbidden state. It is not True if it
@@ -139,11 +137,12 @@ class CartEnv(gym.Env):
             type(action),
         )
         self.state = self._compute_next_state(self.state, action)
-        x, _, theta, _ = self.state
+        x, _ = self.state
 
         self.episode_step += 1
 
         # Forbidden States (S-)
+        # import ipdb; ipdb.set_trace()
         if (
             x < -self.x_threshold
             or x > self.x_threshold
@@ -165,18 +164,22 @@ class CartEnv(gym.Env):
             cost = self.c_trans
 
         # Check for time limit
-        info = {"time_limit": self.episode_step >= self.max_steps}
+        info = {"time_limit": self.episode_step >= self.max_steps,
+                "long_hold": self.success_step >= self.max_steps}
+        # if self.success_step > 2000:
+        #     done = True
 
         return np.array(self.state), cost, done, info
 
     def reset(self):
         if self.mode == "train":
             self.state = self.np_random.uniform(
-                low=[-self.x_threshold, 0, 0, 0], high=[self.x_threshold, 0, 0, 0], size=(4,)
+                # low=[-self.x_threshold, 0, 0, 0], high=[self.x_threshold, 0, 0, 0], size=(4,)
+                low=[-self.x_success_range], high=[self.x_success_range], size=(2,)
             )
         else:
             self.state = self.np_random.uniform(
-                low=[-1, 0, 0, 0], high=[1, 0, 0, 0], size=(4,)
+                low=[-self.x_success_range], high=[self.x_success_range], size=(2,)
             )
         # self.state = self.np_random.uniform(
         #         low=[-0.5, 0, 0, 0], high=[0.5, 0, 0, 0], size=(4,)
@@ -243,6 +246,16 @@ class CartEnv(gym.Env):
             self.track.set_color(0, 0, 0)
             self.viewer.add_geom(self.track)
 
+
+            lb = screen_width // 2 - self.x_success_range * scale
+            rb = screen_width // 2 + self.x_success_range * scale
+            self.left_boundary = rendering.Line((lb, 0), (lb, screen_height))
+            self.left_boundary.set_color(255, 0, 0)
+            self.viewer.add_geom(self.left_boundary)
+            self.right_boundary = rendering.Line((rb, 0), (rb, screen_height))
+            self.right_boundary.set_color(255, 0, 0)
+            self.viewer.add_geom(self.right_boundary)
+
             # self._pole_geom = pole
 
         if self.state is None:
@@ -293,15 +306,15 @@ class CartEnv(gym.Env):
         episode_cost = 0
         obs = self.reset()
         done = False
-        info = {"time_limit": False}
-        while not done and not info["time_limit"]:
+        info = {"time_limit": False, "long_hold": False}
+        while not done and not info["time_limit"] and not info["long_hold"]:
             if get_best_action:
                 action = get_best_action(obs)
             else:
                 action = self.action_space.sample()
 
             next_obs, cost, done, info = self.step(action)
-            rollout.append((obs, action, cost, next_obs, done, group))
+            rollout.append(([obs[0]], action, cost, [next_obs[0]], done, group))
             episode_cost += cost
             obs = next_obs
 

@@ -162,8 +162,10 @@ class NFQAgent:
         done = False
         info = {"time_limit": False}
         episode_cost = 0
+        if render:
+            eval_env.max_steps = 400
         while not done and not info["time_limit"]:
-            action = self.get_best_action(obs, eval_env.unique_actions, eval_env.group)
+            action = self.get_best_action([obs[0]], eval_env.unique_actions, eval_env.group)
             obs, cost, done, info = eval_env.step(action)
             episode_cost += cost
             episode_length += 1
@@ -173,7 +175,7 @@ class NFQAgent:
 
 
         success = (
-            episode_length == eval_env.max_steps
+            episode_length >= eval_env.max_steps
             and abs(obs[0]) <= eval_env.x_success_range
         )
 
@@ -200,28 +202,26 @@ class NFQAgent:
             Total cost accumulated from the evaluation episode.
 
         """
-        success_length = 0
+        episode_length = 0
         obs = eval_env.reset()
         done = False
-        info = {"time_limit": False}
+        info = {"time_limit": False, "long_hold": False}
         episode_cost = 0
-        while not done and not info["time_limit"]:
+        while not done and not info["time_limit"] and not info["long_hold"]:
             action = self.get_best_action(obs, eval_env.unique_actions, eval_env.group)
             obs, cost, done, info = eval_env.step(action)
             episode_cost += cost
-            if cost == 0:
-                success_length += 1
+            episode_length += 1
 
             if render:
                 eval_env.render()
 
 
         success = (
-            success_length == eval_env.max_steps
-            and abs(obs[0]) <= eval_env.x_success_range
+            eval_env.success_step >= eval_env.max_steps
         )
 
-        return success_length, success, episode_cost
+        return episode_length, success, episode_cost
 
     def evaluate_pendulum(self, eval_env: gym.Env, num_steps: int = 100, render: bool = False) -> Tuple[int, str, float]:
         episode_length = 0

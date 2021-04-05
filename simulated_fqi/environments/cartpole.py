@@ -103,7 +103,12 @@ class CartPoleRegulatorEnv(gym.Env):
 
     def _compute_next_state(self, state, action):
         x, x_dot, theta, theta_dot = state
-        force = self.force_mag if action == 1 else -self.force_mag
+        if self.group == 0:
+            force = 10 if action == 1 else -10
+        else:
+            force = 100 if action == 1 else -100
+        # force = self.force_mag if action == 1 else -self.force_mag
+        
         costheta = math.cos(theta)
         sintheta = math.sin(theta)
         temp = (
@@ -166,22 +171,22 @@ class CartPoleRegulatorEnv(gym.Env):
         return np.array(self.state), cost, done, info
 
     def reset(self):
-        # if self.mode == "train":
-        #     self.state = self.np_random.uniform(
-        #         low=[-2.3, 0, -0.3, 0], high=[2.3, 0, 0.3, 0], size=(4,)
-        #     )
-        # else:
-        #     self.state = self.np_random.uniform(
-        #         low=[-1, 0, -0.3, 0], high=[1, 0, 0.3, 0], size=(4,)
-        #     )
         if self.mode == "train":
             self.state = self.np_random.uniform(
                 low=[-2.3, 0, -0.3, 0], high=[2.3, 0, 0.3, 0], size=(4,)
             )
         else:
             self.state = self.np_random.uniform(
-                low=[-2, 0, -0.3, 0], high=[2, 0, 0.3, 0], size=(4,)
+                low=[-1, 0, -0.3, 0], high=[1, 0, 0.3, 0], size=(4,)
             )
+        # if self.mode == "train":
+        #     self.state = self.np_random.uniform(
+        #         low=[-2.3, 0, -0.3, 0], high=[2.3, 0, 0.3, 0], size=(4,)
+        #     )
+        # else:
+        #     self.state = self.np_random.uniform(
+        #         low=[-2, 0, -0.3, 0], high=[2, 0, 0.3, 0], size=(4,)
+        #     )
 
         self.episode_step = 0
 

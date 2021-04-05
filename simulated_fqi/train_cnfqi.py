@@ -71,21 +71,21 @@ def main():
         wandb.init(project="implementations-nfq", config=CONFIG)
 
     # Setup environment
-    bg_cart_mass = 1.0
-    fg_cart_mass = 0.1
-    bg_pole_mass = 0.1
-    fg_pole_mass = 0.1
-    train_env_bg = CartPoleRegulatorEnv(mode="train", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0)
-    train_env_fg = CartPoleRegulatorEnv(mode="train", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1)
-    eval_env_bg = CartPoleRegulatorEnv(mode="eval", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0)
-    eval_env_fg = CartPoleRegulatorEnv(mode="eval", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1)
-
     # bg_cart_mass = 1.0
     # fg_cart_mass = 1.0
-    # train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train")
-    # train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train")
-    # eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval")
-    # eval_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="eval")
+    # bg_pole_mass = 0.1
+    # fg_pole_mass = 0.1
+    # train_env_bg = CartPoleRegulatorEnv(mode="train", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0)
+    # train_env_fg = CartPoleRegulatorEnv(mode="train", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1)
+    # eval_env_bg = CartPoleRegulatorEnv(mode="eval", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0)
+    # eval_env_fg = CartPoleRegulatorEnv(mode="eval", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1)
+
+    bg_cart_mass = 1.0
+    fg_cart_mass = 10.0
+    train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train")
+    train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train")
+    eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval")
+    eval_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="eval")
 
     # Fix random seeds
     if CONFIG.RANDOM_SEED is not None:
@@ -99,7 +99,7 @@ def main():
 
     # Setup agent
     # nfq_net = NFQNetwork(state_dim=train_env_bg.state_dim)
-    nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=False)
+    nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=True)
     # optimizer = optim.Rprop(nfq_net.parameters())
     optimizer = optim.Adam(nfq_net.parameters(), lr=0.1)
     nfq_agent = NFQAgent(nfq_net, optimizer)
@@ -133,12 +133,6 @@ def main():
 
         loss = nfq_agent.train((state_action_b, target_q_values, groups))
 
-        # eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
-        #     eval_env_bg, CONFIG.EVAL_RENDER
-        # )
-        # eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
-        #     eval_env_fg, CONFIG.EVAL_RENDER
-        # )
         eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
             eval_env_bg, render=False
         )
@@ -148,6 +142,9 @@ def main():
 
         # Print current status
         logger.info(
+            # "Epoch {:4d} | Eval BG {:4d} / {:4f} | Eval FG {:4d} / {:4f} | Train Loss {:.4f}".format(
+            #     epoch, eval_env_bg.success_step, eval_episode_cost_bg, eval_env_fg.success_step, eval_episode_cost_fg, loss
+            # )
             "Epoch {:4d} | Eval BG {:4d} / {:4f} | Eval FG {:4d} / {:4f} | Train Loss {:.4f}".format(
                 epoch, eval_episode_length_bg, eval_episode_cost_bg, eval_episode_length_fg, eval_episode_cost_fg, loss
             )
