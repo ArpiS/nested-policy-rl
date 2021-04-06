@@ -73,16 +73,16 @@ def main():
     # Setup environment
     bg_cart_mass = 1.0
     fg_cart_mass = 1.0
-    force_left = 3
+    force_left = 5
     is_contrastive = True
     # train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left)
     # train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left)
     # eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left)
     # eval_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="eval", force_left=force_left)
-    train_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left)
-    train_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left)
-    eval_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left)
-    eval_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="eval", force_left=force_left)
+    train_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left, is_contrastive=is_contrastive)
+    train_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left, is_contrastive=is_contrastive)
+    eval_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left, is_contrastive=is_contrastive)
+    eval_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="eval", force_left=force_left, is_contrastive=is_contrastive)
 
     # Fix random seeds
     if CONFIG.RANDOM_SEED is not None:
@@ -131,13 +131,22 @@ def main():
 
 
         eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = 0, 0, 0
-        if not nfq_net.freeze_shared:
-            eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
-                eval_env_bg, render=False
-            )
+
+        if is_contrastive:
+            if not nfq_net.freeze_shared:
+                eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
+                    eval_env_bg, render=False
+                )
 
 
+            else:
+                eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
+                    eval_env_fg, render=False
+                )
         else:
+            eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
+                    eval_env_bg, render=False
+                )
             eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
                 eval_env_fg, render=False
             )
@@ -201,11 +210,18 @@ def main():
     eval_env_bg.max_steps = 200
     eval_env_fg.max_steps = 200
 
+    # eval_env_bg.save_gif = True
     eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
+    # eval_env_bg.create_gif()
+
     print(eval_episode_length_bg, eval_success_bg)
     train_env_bg.close()
     eval_env_bg.close()
+
+    # eval_env_fg.save_gif = True
     eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
+    # eval_env_fg.create_gif()
+
     print(eval_episode_length_fg, eval_success_fg)
     train_env_fg.close()
     eval_env_fg.close()

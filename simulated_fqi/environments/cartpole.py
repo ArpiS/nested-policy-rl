@@ -11,6 +11,10 @@ import gym
 import numpy as np
 from gym import logger, spaces
 from gym.utils import seeding
+import matplotlib.pyplot as plt
+import os
+import matplotlib.animation as animation
+import matplotlib.image as mpimg
 
 
 class CartPoleRegulatorEnv(gym.Env):
@@ -48,7 +52,7 @@ class CartPoleRegulatorEnv(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self, mode="train", masscart=1.0, masspole=0.1, length=0.5, force_left=0.0, group=1):
+    def __init__(self, mode="train", masscart=1.0, masspole=0.1, length=0.5, force_left=0.0, is_contrastive=True, group=1):
         self.gravity = 9.8
         self.masscart = masscart
         self.masspole = 0.1
@@ -62,6 +66,8 @@ class CartPoleRegulatorEnv(gym.Env):
         self.group = group
         self.state_dim = 4
         self.force_left = force_left
+        self.save_gif = False
+        self.is_contrastive = is_contrastive
 
         assert mode in ["train", "eval"]
         self.mode = mode
@@ -168,6 +174,10 @@ class CartPoleRegulatorEnv(gym.Env):
         # Check for time limit
         info = {"time_limit": self.episode_step >= self.max_steps}
 
+        # if done:
+        #     self.create_gif()
+        #     import ipdb; ipdb.set_trace()
+
         return np.array(self.state), cost, done, info
 
     def reset(self):
@@ -205,7 +215,7 @@ class CartPoleRegulatorEnv(gym.Env):
 
     #     return np.array(self.state)
 
-    def render(self, mode="human"):
+    def render(self, mode="rgb_array"): #mode="human"):
         screen_width = 600
         screen_height = 400
 
@@ -268,7 +278,51 @@ class CartPoleRegulatorEnv(gym.Env):
         self.carttrans.set_translation(cartx, carty)
         self.poletrans.set_rotation(-x[2])
 
-        return self.viewer.render(return_rgb_array=mode == "rgb_array")
+        curr_frame = self.viewer.render(return_rgb_array=mode == "rgb_array")
+
+        if self.save_gif:
+            plt.imshow(curr_frame)
+            plt.xticks([])
+            plt.yticks([])
+            plt.title("Background" if self.group == 0 else "Foreground")
+            plt.savefig("./tmp/tmp{}.png".format(self.episode_step))
+            plt.close()
+        return
+
+    def create_gif(self):
+
+        from os.path import join as pjoin
+        fig = plt.figure()
+        ims = []
+        img_dir = "./tmp"
+        fnames = os.listdir(img_dir)
+        for ii in range(len(fnames)):
+            fname = pjoin(img_dir, "tmp{}.png".format(ii + 1))
+            img = mpimg.imread(fname)
+            im = plt.imshow(img)
+            ax = plt.gca()
+            ax.set_yticks([])
+            ax.set_xticks([])
+            ims.append([im])
+            os.remove(fname)
+
+
+
+        ani = animation.ArtistAnimation(fig, ims, interval=1, blit=True, repeat_delay=500)
+
+        gif_suffix = "_bg" if self.group == 0 else "_fg"
+        if self.is_contrastive:
+            gif_suffix += "_cnfqi"
+        else:
+            gif_suffix += "_nfqi"
+        gif_fname = "./cartpole{}.gif".format(gif_suffix)
+        ani.save(gif_fname, writer='imagemagick')
+
+        import imageio
+
+        gif = imageio.mimread(gif_fname)
+
+        imageio.mimsave(gif_fname, gif, fps=50)
 
     def close(self):
         if self.viewer:

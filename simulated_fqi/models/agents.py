@@ -116,12 +116,13 @@ class NFQAgent:
         state_action_b, target_q_values, groups = pattern_set
         predicted_q_values = self._nfq_net(state_action_b, groups).squeeze()
 
-        if self._nfq_net.freeze_shared:
-            predicted_q_values = predicted_q_values[np.where(groups == 1)[0]]
-            target_q_values = target_q_values[np.where(groups == 1)[0]]
-        else:
-            predicted_q_values = predicted_q_values[np.where(groups == 0)[0]]
-            target_q_values = target_q_values[np.where(groups == 0)[0]]
+        if self._nfq_net.is_contrastive:
+            if self._nfq_net.freeze_shared:
+                predicted_q_values = predicted_q_values[np.where(groups == 1)[0]]
+                target_q_values = target_q_values[np.where(groups == 1)[0]]
+            else:
+                predicted_q_values = predicted_q_values[np.where(groups == 0)[0]]
+                target_q_values = target_q_values[np.where(groups == 0)[0]]
         loss = F.mse_loss(predicted_q_values, target_q_values)
         # import ipdb; ipdb.set_trace()
 

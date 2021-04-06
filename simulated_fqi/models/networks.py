@@ -90,14 +90,15 @@ class ContrastiveNFQNetwork(nn.Module):
 
     def forward(self, x: torch.Tensor, group) -> torch.Tensor:
 
-        if self.freeze_shared:
-            for param in self.layers_shared.parameters():
-                param.requires_grad = False
-            for param in self.layers_fg.parameters():
-                param.requires_grad = True
-        else:
-            for param in self.layers_fg.parameters():
-                param.requires_grad = False
+        if self.is_contrastive:
+            if self.freeze_shared:
+                for param in self.layers_shared.parameters():
+                    param.requires_grad = False
+                for param in self.layers_fg.parameters():
+                    param.requires_grad = True
+            else:
+                for param in self.layers_fg.parameters():
+                    param.requires_grad = False
 
 
         x_shared = self.layers_shared(x)
