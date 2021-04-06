@@ -14,14 +14,12 @@ class NFQAgent:
     def __init__(self, nfq_net: nn.Module, optimizer: optim.Optimizer):
         """
         Neural Fitted Q-Iteration agent.
-
         Parameters
         ----------
         nfq_net : nn.Module
             The Q-Network that returns estimated cost given observation and action.
         optimizer : optim.Optimzer
             Optimizer for training the NFQ network.
-
         """
         self._nfq_net = nfq_net
         self._optimizer = optimizer
@@ -29,17 +27,14 @@ class NFQAgent:
     def get_best_action(self, obs: np.array, unique_actions: np.array, group) -> int:
         """
         Return best action for given observation according to the neural network.
-
         Parameters
         ----------
         obs : np.array
             An observation to find the best action for.
-
         Returns
         -------
         action : int
             The action chosen by greedy selection.
-
         """
         q_list = np.zeros(len(unique_actions))
         for ii, a in enumerate(unique_actions):
@@ -59,19 +54,16 @@ class NFQAgent:
         gamma: float = 0.95,
     ):
         """Generate pattern set.
-
         Parameters
         ----------
         rollouts : list of tuple
             Generated rollouts, which is a tuple of state, action, cost, next state, and done.
         gamma : float
             Discount factor. Defaults to 0.95.
-
         Returns
         -------
         pattern_set : tuple of torch.Tensor
             Pattern set to train the NFQ network.
-
         """
         # _b denotes batch
         state_b, action_b, cost_b, next_state_b, done_b, group_b = zip(*rollouts)
@@ -112,21 +104,26 @@ class NFQAgent:
 
     def train(self, pattern_set: Tuple[torch.Tensor, torch.Tensor]) -> float:
         """Train neural network with a given pattern set.
-
         Parameters
         ----------
         pattern_set : tuple of torch.Tensor
             Pattern set to train the NFQ network.
-
         Returns
         -------
         loss : float
             Training loss.
-
         """
         state_action_b, target_q_values, groups = pattern_set
         predicted_q_values = self._nfq_net(state_action_b, groups).squeeze()
+
+        if self._nfq_net.freeze_shared:
+            predicted_q_values = predicted_q_values[np.where(groups == 1)[0]]
+            target_q_values = target_q_values[np.where(groups == 1)[0]]
+        else:
+            predicted_q_values = predicted_q_values[np.where(groups == 0)[0]]
+            target_q_values = target_q_values[np.where(groups == 0)[0]]
         loss = F.mse_loss(predicted_q_values, target_q_values)
+        # import ipdb; ipdb.set_trace()
 
         # for param in self._nfq_net.parameters():
         #     loss += 10 * torch.norm(param)
@@ -139,14 +136,12 @@ class NFQAgent:
 
     def evaluate(self, eval_env: gym.Env, render: bool) -> Tuple[int, str, float]:
         """Evaluate NFQ agent on evaluation environment.
-
         Parameters
         ----------
         eval_env : gym.Env
             Environment to evaluate the agent.
         render: bool
             If true, render environment.
-
         Returns
         -------
         episode_length : int
@@ -155,59 +150,13 @@ class NFQAgent:
             True if the agent was terminated due to max timestep.
         episode_cost : float
             Total cost accumulated from the evaluation episode.
-
         """
         episode_length = 0
         obs = eval_env.reset()
         done = False
         info = {"time_limit": False}
         episode_cost = 0
-        if render:
-            eval_env.max_steps = 400
         while not done and not info["time_limit"]:
-            action = self.get_best_action([obs[0]], eval_env.unique_actions, eval_env.group)
-            obs, cost, done, info = eval_env.step(action)
-            episode_cost += cost
-            episode_length += 1
-
-            if render:
-                eval_env.render()
-
-
-        success = (
-            episode_length >= eval_env.max_steps
-            and abs(obs[0]) <= eval_env.x_success_range
-        )
-
-        return episode_length, success, episode_cost
-
-
-    def evaluate_cart(self, eval_env: gym.Env, render: bool) -> Tuple[int, str, float]:
-        """Evaluate NFQ agent on evaluation environment.
-
-        Parameters
-        ----------
-        eval_env : gym.Env
-            Environment to evaluate the agent.
-        render: bool
-            If true, render environment.
-
-        Returns
-        -------
-        episode_length : int
-            Number of steps the agent took.
-        success : bool
-            True if the agent was terminated due to max timestep.
-        episode_cost : float
-            Total cost accumulated from the evaluation episode.
-
-        """
-        episode_length = 0
-        obs = eval_env.reset()
-        done = False
-        info = {"time_limit": False, "long_hold": False}
-        episode_cost = 0
-        while not done and not info["time_limit"] and not info["long_hold"]:
             action = self.get_best_action(obs, eval_env.unique_actions, eval_env.group)
             obs, cost, done, info = eval_env.step(action)
             episode_cost += cost
@@ -218,10 +167,52 @@ class NFQAgent:
 
 
         success = (
-            eval_env.success_step >= eval_env.max_steps
+            episode_length == eval_env.max_steps
+            and abs(obs[0]) <= eval_env.x_success_range
         )
 
         return episode_length, success, episode_cost
+
+
+    def evaluate_cart(self, eval_env: gym.Env, render: bool) -> Tuple[int, str, float]:
+        """Evaluate NFQ agent on evaluation environment.
+        Parameters
+        ----------
+        eval_env : gym.Env
+            Environment to evaluate the agent.
+        render: bool
+            If true, render environment.
+        Returns
+        -------
+        episode_length : int
+            Number of steps the agent took.
+        success : bool
+            True if the agent was terminated due to max timestep.
+        episode_cost : float
+            Total cost accumulated from the evaluation episode.
+        """
+        success_length = 0
+        obs = eval_env.reset()
+        done = False
+        info = {"time_limit": False}
+        episode_cost = 0
+        while not done and not info["time_limit"]:
+            action = self.get_best_action(obs, eval_env.unique_actions, eval_env.group)
+            obs, cost, done, info = eval_env.step(action)
+            episode_cost += cost
+            if cost == 0:
+                success_length += 1
+
+            if render:
+                eval_env.render()
+
+
+        success = (
+            success_length == eval_env.max_steps
+            and abs(obs[0]) <= eval_env.x_success_range
+        )
+
+        return success_length, success, episode_cost
 
     def evaluate_pendulum(self, eval_env: gym.Env, num_steps: int = 100, render: bool = False) -> Tuple[int, str, float]:
         episode_length = 0

@@ -48,7 +48,7 @@ class CartPoleRegulatorEnv(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self, mode="train", masscart=1.0, masspole=0.1, length=0.5, group=1):
+    def __init__(self, mode="train", masscart=1.0, masspole=0.1, length=0.5, force_left=0.0, group=1):
         self.gravity = 9.8
         self.masscart = masscart
         self.masspole = 0.1
@@ -61,6 +61,7 @@ class CartPoleRegulatorEnv(gym.Env):
         self.unique_actions = np.array([0, 1])
         self.group = group
         self.state_dim = 4
+        self.force_left = force_left
 
         assert mode in ["train", "eval"]
         self.mode = mode
@@ -103,11 +104,10 @@ class CartPoleRegulatorEnv(gym.Env):
 
     def _compute_next_state(self, state, action):
         x, x_dot, theta, theta_dot = state
-        if self.group == 0:
-            force = 10 if action == 1 else -10
-        else:
-            force = 100 if action == 1 else -100
-        # force = self.force_mag if action == 1 else -self.force_mag
+        force = self.force_mag if action == 1 else -self.force_mag
+
+        if self.group == 1:
+            force -= self.force_left
         
         costheta = math.cos(theta)
         sintheta = math.sin(theta)

@@ -71,21 +71,18 @@ def main():
         wandb.init(project="implementations-nfq", config=CONFIG)
 
     # Setup environment
-    # bg_cart_mass = 1.0
-    # fg_cart_mass = 1.0
-    # bg_pole_mass = 0.1
-    # fg_pole_mass = 0.1
-    # train_env_bg = CartPoleRegulatorEnv(mode="train", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0)
-    # train_env_fg = CartPoleRegulatorEnv(mode="train", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1)
-    # eval_env_bg = CartPoleRegulatorEnv(mode="eval", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0)
-    # eval_env_fg = CartPoleRegulatorEnv(mode="eval", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1)
-
     bg_cart_mass = 1.0
-    fg_cart_mass = 10.0
-    train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train")
-    train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train")
-    eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval")
-    eval_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="eval")
+    fg_cart_mass = 1.0
+    force_left = 3
+    is_contrastive = True
+    # train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left)
+    # train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left)
+    # eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left)
+    # eval_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="eval", force_left=force_left)
+    train_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left)
+    train_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left)
+    eval_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left)
+    eval_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="eval", force_left=force_left)
 
     # Fix random seeds
     if CONFIG.RANDOM_SEED is not None:
@@ -98,10 +95,9 @@ def main():
         logger.warning("Running without a random seed: this run is NOT reproducible.")
 
     # Setup agent
-    # nfq_net = NFQNetwork(state_dim=train_env_bg.state_dim)
-    nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=True)
+    nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive)
     # optimizer = optim.Rprop(nfq_net.parameters())
-    optimizer = optim.Adam(nfq_net.parameters(), lr=0.1)
+    optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
     nfq_agent = NFQAgent(nfq_net, optimizer)
 
     # Load trained agent
@@ -133,12 +129,22 @@ def main():
 
         loss = nfq_agent.train((state_action_b, target_q_values, groups))
 
-        eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
-            eval_env_bg, render=False
-        )
-        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
-            eval_env_fg, render=False
-        )
+
+        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = 0, 0, 0
+        if not nfq_net.freeze_shared:
+            eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
+                eval_env_bg, render=False
+            )
+
+
+        else:
+            eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
+                eval_env_fg, render=False
+            )
+
+        if eval_success_bg and is_contrastive:
+            nfq_net.freeze_shared = True
+            print("FREEZING SHARED")
 
         # Print current status
         logger.info(
@@ -192,6 +198,9 @@ def main():
     eval_env_bg.step_number = 0
     eval_env_fg.step_number = 0
     
+    eval_env_bg.max_steps = 200
+    eval_env_fg.max_steps = 200
+
     eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
     print(eval_episode_length_bg, eval_success_bg)
     train_env_bg.close()
@@ -200,7 +209,7 @@ def main():
     print(eval_episode_length_fg, eval_success_fg)
     train_env_fg.close()
     eval_env_fg.close()
-    import ipdb; ipdb.set_trace()
+    #import ipdb; ipdb.set_trace()
     
     
     
