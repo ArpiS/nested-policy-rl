@@ -10,6 +10,7 @@ from models.networks import NFQNetwork, ContrastiveNFQNetwork
 from util import get_logger, load_models, make_reproducible, save_models
 import matplotlib.pyplot as plt
 import numpy as np
+import itertools
 
 
 def main():
@@ -97,7 +98,9 @@ def main():
     # Setup agent
     nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive)
     # optimizer = optim.Rprop(nfq_net.parameters())
-    optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
+
+    # optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
+    optimizer = optim.Adam(itertools.chain(nfq_net.layers_shared.parameters(), nfq_net.layers_last_shared.parameters()), lr=1e-1)
     nfq_agent = NFQAgent(nfq_net, optimizer)
 
     # Load trained agent
@@ -122,6 +125,11 @@ def main():
             total_cost += episode_cost
     bg_rollouts.extend(fg_rollouts)
     all_rollouts = bg_rollouts.copy()
+
+    shared_success_counter = 0
+    # fg_success_counter = 0
+    bg_success_queue = [0] * 3
+    fg_success_queue = [0] * 3
     
     for epoch in range(CONFIG.EPOCH + 1):
 
@@ -148,9 +156,7 @@ def main():
                     assert param.requires_grad == False
             else:
 
-                eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
-                    eval_env_bg, render=False
-                )
+                
                 for param in nfq_net.layers_fg.parameters():
                     assert param.requires_grad == False
                 for param in nfq_net.layers_last_fg.parameters():
@@ -159,6 +165,9 @@ def main():
                     assert param.requires_grad == True
                 for param in nfq_net.layers_last_shared.parameters():
                     assert param.requires_grad == True
+                eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
+                    eval_env_bg, render=False
+                )
             
                 
         else:
@@ -169,9 +178,35 @@ def main():
                 eval_env_fg, render=False
             )
 
-        if eval_success_bg and is_contrastive:
+
+        # bg_success_queue.pop()
+        bg_success_queue = bg_success_queue[1:]
+        bg_success_queue.append(1 if eval_success_bg else 0)
+        print(bg_success_queue)
+        # fg_success_queue.pop()
+        fg_success_queue = fg_success_queue[1:]
+        fg_success_queue.append(1 if eval_success_fg else 0)
+
+        if sum(bg_success_queue) == 3:
             nfq_net.freeze_shared = True
             print("FREEZING SHARED")
+            if is_contrastive:
+                for param in nfq_net.layers_shared.parameters():
+                    param.requires_grad = False
+                for param in nfq_net.layers_last_shared.parameters():
+                    param.requires_grad = False
+                for param in nfq_net.layers_fg.parameters():
+                    param.requires_grad = True
+                for param in nfq_net.layers_last_fg.parameters():
+                    param.requires_grad = True
+            else:
+                for param in nfq_net.layers_fg.parameters():
+                    param.requires_grad = False
+                for param in nfq_net.layers_last_fg.parameters():
+                    param.requires_grad = False
+
+            optimizer = optim.Adam(itertools.chain(nfq_net.layers_fg.parameters(), nfq_net.layers_last_fg.parameters()), lr=1e-1)
+            nfq_agent._optimizer = optimizer
             # break
 
         # Print current status
@@ -194,7 +229,7 @@ def main():
             )
             wandb.log({"Evaluation Episode Cost": eval_episode_cost}, step=epoch)
 
-        if eval_success_bg and eval_success_fg:
+        if sum(fg_success_queue) == 3:
             logger.info(
                 "Epoch {:4d} | Total Cycles {:6d} | Total Cost {:4.2f}".format(
                     epoch, len(all_rollouts), total_cost
