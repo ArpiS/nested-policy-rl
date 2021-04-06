@@ -56,8 +56,8 @@ class ContrastiveNFQNetwork(nn.Module):
                 nonlinearity(),
                 nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
-                nonlinearity()
+                # nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
+                # nonlinearity()
             )
         if self.is_contrastive:
             self.layers_fg = nn.Sequential(
@@ -65,11 +65,19 @@ class ContrastiveNFQNetwork(nn.Module):
                 nonlinearity(),
                 nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
+                # nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
+                # nonlinearity()
+            )
+            # self.layers_last = nn.Sequential(
+            #     nn.Linear(LAYER_WIDTH*2, 1),
+            #     nonlinearity()
+            # )
+            self.layers_last_shared = nn.Sequential(
+                nn.Linear(LAYER_WIDTH, 1),
                 nonlinearity()
             )
-            self.layers_last = nn.Sequential(
-                nn.Linear(LAYER_WIDTH*2, 1),
+            self.layers_last_fg = nn.Sequential(
+                nn.Linear(LAYER_WIDTH, 1),
                 nonlinearity()
             )
         else:
@@ -84,9 +92,16 @@ class ContrastiveNFQNetwork(nn.Module):
                 torch.nn.init.uniform_(m.weight, -0.5, 0.5)
 
         self.layers_shared.apply(init_weights)
-        self.layers_last.apply(init_weights)
+        # self.layers_last.apply(init_weights)
+        self.layers_last_shared.apply(init_weights)
         if self.is_contrastive:
             self.layers_fg.apply(init_weights)
+            self.layers_last_fg.apply(init_weights)
+
+        for param in self.layers_fg.parameters():
+            param.requires_grad = False
+        for param in self.layers_last_fg.parameters():
+            param.requires_grad = False
 
     def forward(self, x: torch.Tensor, group) -> torch.Tensor:
 
@@ -94,20 +109,33 @@ class ContrastiveNFQNetwork(nn.Module):
             if self.freeze_shared:
                 for param in self.layers_shared.parameters():
                     param.requires_grad = False
+                for param in self.layers_last_shared.parameters():
+                    param.requires_grad = False
                 for param in self.layers_fg.parameters():
+                    param.requires_grad = True
+                for param in self.layers_last_fg.parameters():
                     param.requires_grad = True
             else:
                 for param in self.layers_fg.parameters():
                     param.requires_grad = False
+                for param in self.layers_last_fg.parameters():
+                    param.requires_grad = False
+
+        # for ii, param in enumerate(self.layers_last.parameters()):
+        #     print(ii)
+        #     import ipdb; ipdb.set_trace()
+        
 
 
         x_shared = self.layers_shared(x)
+        x_shared = self.layers_last_shared(x_shared)
         if self.is_contrastive:
 
             x_fg = self.layers_fg(x)
-            x = torch.cat((x_shared, x_fg * group), dim=-1)
+            x_fg = self.layers_last_fg(x_fg)
+            # x = torch.cat((x_shared, x_fg * group), dim=-1)
             # x = x_shared + x_fg * group
-            # return x_shared + x_fg * group
+            return x_shared + x_fg * group
             
 
             # if len(group) == 1:

@@ -133,16 +133,34 @@ def main():
         eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = 0, 0, 0
 
         if is_contrastive:
-            if not nfq_net.freeze_shared:
-                eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
-                    eval_env_bg, render=False
-                )
-
-
-            else:
+            # import ipdb; ipdb.set_trace()
+            if nfq_net.freeze_shared:
                 eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
                     eval_env_fg, render=False
                 )
+                for param in nfq_net.layers_fg.parameters():
+                    assert param.requires_grad == True
+                for param in nfq_net.layers_last_fg.parameters():
+                    assert param.requires_grad == True
+                for param in nfq_net.layers_shared.parameters():
+                    assert param.requires_grad == False
+                for param in nfq_net.layers_last_shared.parameters():
+                    assert param.requires_grad == False
+            else:
+
+                eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
+                    eval_env_bg, render=False
+                )
+                for param in nfq_net.layers_fg.parameters():
+                    assert param.requires_grad == False
+                for param in nfq_net.layers_last_fg.parameters():
+                    assert param.requires_grad == False
+                for param in nfq_net.layers_shared.parameters():
+                    assert param.requires_grad == True
+                for param in nfq_net.layers_last_shared.parameters():
+                    assert param.requires_grad == True
+            
+                
         else:
             eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
                     eval_env_bg, render=False
@@ -154,6 +172,7 @@ def main():
         if eval_success_bg and is_contrastive:
             nfq_net.freeze_shared = True
             print("FREEZING SHARED")
+            # break
 
         # Print current status
         logger.info(
@@ -207,20 +226,20 @@ def main():
     eval_env_bg.step_number = 0
     eval_env_fg.step_number = 0
     
-    eval_env_bg.max_steps = 200
-    eval_env_fg.max_steps = 200
+    eval_env_bg.max_steps = 1000
+    eval_env_fg.max_steps = 1000
 
-    eval_env_bg.save_gif = True
+    # eval_env_bg.save_gif = True
     eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
-    eval_env_bg.create_gif()
+    # eval_env_bg.create_gif()
 
     print(eval_episode_length_bg, eval_success_bg)
     train_env_bg.close()
     eval_env_bg.close()
 
-    eval_env_fg.save_gif = True
+    # eval_env_fg.save_gif = True
     eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
-    eval_env_fg.create_gif()
+    # eval_env_fg.create_gif()
 
     print(eval_episode_length_fg, eval_success_fg)
     train_env_fg.close()

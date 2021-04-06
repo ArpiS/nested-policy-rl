@@ -112,6 +112,11 @@ class CartPoleRegulatorEnv(gym.Env):
         x, x_dot, theta, theta_dot = state
         force = self.force_mag if action == 1 else -self.force_mag
 
+        # if self.group == 1:
+        #     force = self.force_mag if action == 1 else -2 * self.force_mag
+        # else:
+        #     force = self.force_mag if action == 1 else -self.force_mag
+
         if self.group == 1:
             force -= self.force_left
         
