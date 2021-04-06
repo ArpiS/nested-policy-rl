@@ -9,3 +9,10 @@ notifications:
       - ajones788@gmail.com
     on_success: always
     on_failure: always
+
+install:
+  - pip3 install -r requirements.txt
+
+script: 
+  - black .
+  - pytest
