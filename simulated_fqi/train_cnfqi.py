@@ -210,17 +210,17 @@ def main():
     eval_env_bg.max_steps = 200
     eval_env_fg.max_steps = 200
 
-    # eval_env_bg.save_gif = True
+    eval_env_bg.save_gif = True
     eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
-    # eval_env_bg.create_gif()
+    eval_env_bg.create_gif()
 
     print(eval_episode_length_bg, eval_success_bg)
     train_env_bg.close()
     eval_env_bg.close()
 
-    # eval_env_fg.save_gif = True
+    eval_env_fg.save_gif = True
     eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
-    # eval_env_fg.create_gif()
+    eval_env_fg.create_gif()
 
     print(eval_episode_length_fg, eval_success_fg)
     train_env_fg.close()
