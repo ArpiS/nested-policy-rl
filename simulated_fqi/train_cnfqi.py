@@ -75,7 +75,7 @@ def main():
     bg_cart_mass = 1.0
     fg_cart_mass = 1.0
     force_left = 5
-    is_contrastive = True
+    is_contrastive = False
     # train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left)
     # train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left)
     # eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left)
@@ -99,8 +99,11 @@ def main():
     nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive)
     # optimizer = optim.Rprop(nfq_net.parameters())
 
-    # optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
-    optimizer = optim.Adam(itertools.chain(nfq_net.layers_shared.parameters(), nfq_net.layers_last_shared.parameters()), lr=1e-1)
+    if is_contrastive:
+        optimizer = optim.Adam(itertools.chain(nfq_net.layers_shared.parameters(), nfq_net.layers_last_shared.parameters()), lr=1e-1)
+    else:
+        optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
+    
     nfq_agent = NFQAgent(nfq_net, optimizer)
 
     # Load trained agent
@@ -182,8 +185,7 @@ def main():
         # bg_success_queue.pop()
         bg_success_queue = bg_success_queue[1:]
         bg_success_queue.append(1 if eval_success_bg else 0)
-        print(bg_success_queue)
-        # fg_success_queue.pop()
+
         fg_success_queue = fg_success_queue[1:]
         fg_success_queue.append(1 if eval_success_fg else 0)
 

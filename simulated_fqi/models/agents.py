@@ -38,18 +38,22 @@ class NFQAgent:
         """
         q_list = np.zeros(len(unique_actions))
         for ii, a in enumerate(unique_actions):
-            # q_list[ii] = self._nfq_net(
-            #     torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0), group * torch.ones(1)
-            # )
-            if group == 0:
-                x = self._nfq_net.layers_shared(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
-                q_list[ii] = self._nfq_net.layers_last_shared(x)
+            
+
+            if self._nfq_net.is_contrastive:
+                if group == 0:
+                    x = self._nfq_net.layers_shared(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
+                    q_list[ii] = self._nfq_net.layers_last_shared(x)
+                else:
+                    x_shared = self._nfq_net.layers_shared(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
+                    x_fg = self._nfq_net.layers_fg(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
+                    x_shared = self._nfq_net.layers_last_shared(x_shared)
+                    x_fg = self._nfq_net.layers_last_fg(x_fg)
+                    q_list[ii] = x_shared + x_fg
             else:
-                x_shared = self._nfq_net.layers_shared(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
-                x_fg = self._nfq_net.layers_fg(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
-                x_shared = self._nfq_net.layers_last_shared(x_shared)
-                x_fg = self._nfq_net.layers_last_fg(x_fg)
-                q_list[ii] = x_shared + x_fg
+                q_list[ii] = self._nfq_net(
+                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0), group * torch.ones(1)
+                )
 
         # plt.plot(q_list)
         # plt.show()

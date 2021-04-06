@@ -92,34 +92,40 @@ class ContrastiveNFQNetwork(nn.Module):
                 torch.nn.init.uniform_(m.weight, -0.5, 0.5)
 
         self.layers_shared.apply(init_weights)
-        # self.layers_last.apply(init_weights)
-        self.layers_last_shared.apply(init_weights)
+        
+        
         if self.is_contrastive:
+            self.layers_last_shared.apply(init_weights)
             self.layers_fg.apply(init_weights)
             self.layers_last_fg.apply(init_weights)
 
-        for param in self.layers_fg.parameters():
-            param.requires_grad = False
-        for param in self.layers_last_fg.parameters():
-            param.requires_grad = False
+            for param in self.layers_fg.parameters():
+                param.requires_grad = False
+            for param in self.layers_last_fg.parameters():
+                param.requires_grad = False
+        else:
+            self.layers_last.apply(init_weights)
+
+
+        
 
     def forward(self, x: torch.Tensor, group) -> torch.Tensor:
 
-        if self.is_contrastive:
-            if self.freeze_shared:
-                for param in self.layers_shared.parameters():
-                    param.requires_grad = False
-                for param in self.layers_last_shared.parameters():
-                    param.requires_grad = False
-                for param in self.layers_fg.parameters():
-                    param.requires_grad = True
-                for param in self.layers_last_fg.parameters():
-                    param.requires_grad = True
-            else:
-                for param in self.layers_fg.parameters():
-                    param.requires_grad = False
-                for param in self.layers_last_fg.parameters():
-                    param.requires_grad = False
+        # if self.is_contrastive:
+        #     if self.freeze_shared:
+        #         for param in self.layers_shared.parameters():
+        #             param.requires_grad = False
+        #         for param in self.layers_last_shared.parameters():
+        #             param.requires_grad = False
+        #         for param in self.layers_fg.parameters():
+        #             param.requires_grad = True
+        #         for param in self.layers_last_fg.parameters():
+        #             param.requires_grad = True
+        #     else:
+        #         for param in self.layers_fg.parameters():
+        #             param.requires_grad = False
+        #         for param in self.layers_last_fg.parameters():
+        #             param.requires_grad = False
 
         # for ii, param in enumerate(self.layers_last.parameters()):
         #     print(ii)
@@ -128,8 +134,9 @@ class ContrastiveNFQNetwork(nn.Module):
 
 
         x_shared = self.layers_shared(x)
-        x_shared = self.layers_last_shared(x_shared)
+        
         if self.is_contrastive:
+            x_shared = self.layers_last_shared(x_shared)
 
             x_fg = self.layers_fg(x)
             x_fg = self.layers_last_fg(x_fg)
