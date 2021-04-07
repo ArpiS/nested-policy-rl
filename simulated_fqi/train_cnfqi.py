@@ -7,6 +7,8 @@ from environments import CartEnv
 from environments import AcrobotEnv
 from models.agents import NFQAgent
 from models.networks import NFQNetwork, ContrastiveNFQNetwork
+# from simulated_fqi import NFQAgent
+# from simulated_fqi import NFQNetwork, ContrastiveNFQNetwork
 from util import get_logger, load_models, make_reproducible, save_models
 import matplotlib.pyplot as plt
 import numpy as np
