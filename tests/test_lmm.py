@@ -1,7 +1,7 @@
-import sys
-sys.path.append("../simulated_fqi/models/")
+# import sys
+# sys.path.append("../simulated_fqi/models/")
 
-from lmm import LMM
+from simulated_fqi import LMM
 import numpy as np
 from scipy.special import expit
 

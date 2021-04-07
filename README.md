@@ -1,5 +1,5 @@
 # contrastive-rl
-[![Build Status](https://travis-ci.com/bee-hive/contrastive-rl.svg?branch=main)](https://travis-ci.com/github/bee-hive/contrastive-rl)
+[![Build Status](https://travis-ci.com/bee-hive/contrastive-rl.svg?token=ayhssuqfePXXXej12cqW&branch=main)](https://travis-ci.com/github/bee-hive/contrastive-rl)
 
 Models for contrastive reinforcement learning.
 
