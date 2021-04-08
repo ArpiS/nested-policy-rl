@@ -130,8 +130,6 @@ def main(verbose=True, is_contrastive=False):
     bg_rollouts.extend(fg_rollouts)
     all_rollouts = bg_rollouts.copy()
 
-    shared_success_counter = 0
-    # fg_success_counter = 0
     bg_success_queue = [0] * 3
     fg_success_queue = [0] * 3
     
@@ -145,33 +143,33 @@ def main(verbose=True, is_contrastive=False):
         eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = 0, 0, 0
 
         if is_contrastive:
-            # import ipdb; ipdb.set_trace()
             if nfq_net.freeze_shared:
                 eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
                     eval_env_fg, render=False
                 )
-                for param in nfq_net.layers_fg.parameters():
-                    assert param.requires_grad == True
-                for param in nfq_net.layers_last_fg.parameters():
-                    assert param.requires_grad == True
-                for param in nfq_net.layers_shared.parameters():
-                    assert param.requires_grad == False
-                for param in nfq_net.layers_last_shared.parameters():
-                    assert param.requires_grad == False
+                # for param in nfq_net.layers_fg.parameters():
+                #     assert param.requires_grad == True
+                # for param in nfq_net.layers_last_fg.parameters():
+                #     assert param.requires_grad == True
+                # for param in nfq_net.layers_shared.parameters():
+                #     assert param.requires_grad == False
+                # for param in nfq_net.layers_last_shared.parameters():
+                #     assert param.requires_grad == False
             else:
 
-                
-                for param in nfq_net.layers_fg.parameters():
-                    assert param.requires_grad == False
-                for param in nfq_net.layers_last_fg.parameters():
-                    assert param.requires_grad == False
-                for param in nfq_net.layers_shared.parameters():
-                    assert param.requires_grad == True
-                for param in nfq_net.layers_last_shared.parameters():
-                    assert param.requires_grad == True
+                # for param in nfq_net.layers_fg.parameters():
+                #     assert param.requires_grad == False
+                # for param in nfq_net.layers_last_fg.parameters():
+                #     assert param.requires_grad == False
+                # for param in nfq_net.layers_shared.parameters():
+                #     assert param.requires_grad == True
+                # for param in nfq_net.layers_last_shared.parameters():
+                #     assert param.requires_grad == True
                 eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
                     eval_env_bg, render=False
                 )
+
+            nfq_net.assert_correct_layers_frozen()
             
                 
         else:
@@ -182,8 +180,6 @@ def main(verbose=True, is_contrastive=False):
                 eval_env_fg, render=False
             )
 
-
-        # bg_success_queue.pop()
         bg_success_queue = bg_success_queue[1:]
         bg_success_queue.append(1 if eval_success_bg else 0)
 
@@ -194,29 +190,14 @@ def main(verbose=True, is_contrastive=False):
             nfq_net.freeze_shared = True
             print("FREEZING SHARED")
             if is_contrastive:
-                for param in nfq_net.layers_shared.parameters():
-                    param.requires_grad = False
-                for param in nfq_net.layers_last_shared.parameters():
-                    param.requires_grad = False
-                for param in nfq_net.layers_fg.parameters():
-                    param.requires_grad = True
-                for param in nfq_net.layers_last_fg.parameters():
-                    param.requires_grad = True
-            else:
-                for param in nfq_net.layers_fg.parameters():
-                    param.requires_grad = False
-                for param in nfq_net.layers_last_fg.parameters():
-                    param.requires_grad = False
+                nfq_net.freeze_shared_layers()
+                nfq_net.unfreeze_fg_layers()
 
-            optimizer = optim.Adam(itertools.chain(nfq_net.layers_fg.parameters(), nfq_net.layers_last_fg.parameters()), lr=1e-1)
-            nfq_agent._optimizer = optimizer
-            # break
+                optimizer = optim.Adam(itertools.chain(nfq_net.layers_fg.parameters(), nfq_net.layers_last_fg.parameters()), lr=1e-1)
+                nfq_agent._optimizer = optimizer
 
         # Print current status
         logger.info(
-            # "Epoch {:4d} | Eval BG {:4d} / {:4f} | Eval FG {:4d} / {:4f} | Train Loss {:.4f}".format(
-            #     epoch, eval_env_bg.success_step, eval_episode_cost_bg, eval_env_fg.success_step, eval_episode_cost_fg, loss
-            # )
             "Epoch {:4d} | Eval BG {:4d} / {:4f} | Eval FG {:4d} / {:4f} | Train Loss {:.4f}".format(
                 epoch, eval_episode_length_bg, eval_episode_cost_bg, eval_episode_length_fg, eval_episode_cost_fg, loss
             )
@@ -232,7 +213,21 @@ def main(verbose=True, is_contrastive=False):
             )
             wandb.log({"Evaluation Episode Cost": eval_episode_cost}, step=epoch)
 
-        if sum(fg_success_queue) == 3:
+        if is_contrastive and sum(fg_success_queue) == 3:
+            logger.info(
+                "Epoch {:4d} | Total Cycles {:6d} | Total Cost {:4.2f}".format(
+                    epoch, len(all_rollouts), total_cost
+                )
+            )
+            if CONFIG.USE_TENSORBOARD:
+                writer.add_scalar("summary/total_cycles", len(all_rollouts), epoch)
+                writer.add_scalar("summary/total_cost", total_cost, epoch)
+            if CONFIG.USE_WANDB:
+                wandb.log({"Total Cycles": len(all_rollouts)}, step=epoch)
+                wandb.log({"Total Cost": total_cost}, step=epoch)
+            break
+
+        if not is_contrastive and (sum(bg_success_queue) == 3 or sum(fg_success_queue) == 3):
             logger.info(
                 "Epoch {:4d} | Total Cycles {:6d} | Total Cost {:4.2f}".format(
                     epoch, len(all_rollouts), total_cost
@@ -249,17 +244,6 @@ def main(verbose=True, is_contrastive=False):
     # Save trained agent
     if CONFIG.SAVE_PATH:
         save_models(CONFIG.SAVE_PATH, nfq_net=nfq_net, optimizer=optimizer)
-
-    # angles = np.linspace(-2, 2, 200)
-    # bg_actions = []
-    # fg_actions = []
-    # for x in angles:
-    #     bg_a = nfq_agent.get_best_action([0, x, -0.1, 0], unique_actions=[0, 1], group=0)
-    #     fg_a = nfq_agent.get_best_action([0, x, -0.1, 0], unique_actions=[0, 1], group=1)
-    #     bg_actions.append(bg_a)
-    #     fg_actions.append(fg_a)
-    # print(np.all(np.array(fg_actions) == np.array(bg_actions)))
-    # import ipdb; ipdb.set_trace()
 
     eval_env_bg.step_number = 0
     eval_env_fg.step_number = 0
@@ -334,8 +318,6 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     bg_rollouts.extend(fg_rollouts)
     all_rollouts = bg_rollouts.copy()
 
-    shared_success_counter = 0
-    # fg_success_counter = 0
     bg_success_queue = [0] * 3
     fg_success_queue = [0] * 3
 
@@ -455,7 +437,6 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
         print(eval_episode_length_fg, eval_success_fg)
     train_env_fg.close()
     eval_env_fg.close()
-    # import ipdb; ipdb.set_trace()
     return eval_episode_length_bg, eval_episode_length_fg
     
     
@@ -464,4 +445,4 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
 
 
 if __name__ == "__main__":
-    main()
+    main(is_contrastive=True)
