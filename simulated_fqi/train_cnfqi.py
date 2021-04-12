@@ -271,11 +271,11 @@ def main(verbose=True, is_contrastive=False):
 
 
 def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100, eval_env_max_steps=3000, discount=0.95, init_experience=400,
-        increment_experience=0, hint_to_goal=0):
+        increment_experience=0, hint_to_goal=0, evaluations=5, force_left=5):
     # Setup environment
     bg_cart_mass = 1.0
     fg_cart_mass = 1.0
-    force_left = 5
+    force_left = force_left
     # train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left)
     # train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left)
     # eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left)
@@ -422,22 +422,32 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     eval_env_bg.max_steps = 1000
     eval_env_fg.max_steps = 1000
 
-    # eval_env_bg.save_gif = True
-    eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
-    # eval_env_bg.create_gif()
-    if verbose:
-        print(eval_episode_length_bg, eval_success_bg)
-    train_env_bg.close()
-    eval_env_bg.close()
+    success = 0
+    total = 0
+    for it in range(evaluations):
 
-    # eval_env_fg.save_gif = True
-    eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
-    # eval_env_fg.create_gif()
-    if verbose:
-        print(eval_episode_length_fg, eval_success_fg)
-    train_env_fg.close()
-    eval_env_fg.close()
-    return eval_episode_length_bg, eval_episode_length_fg
+        # eval_env_bg.save_gif = True
+        eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
+        # eval_env_bg.create_gif()
+        if verbose:
+            print(eval_episode_length_bg, eval_success_bg)
+        if eval_episode_length_bg == 1000:
+            success += 1
+        total += 1
+        train_env_bg.close()
+        eval_env_bg.close()
+
+        # eval_env_fg.save_gif = True
+        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
+        # eval_env_fg.create_gif()
+        if verbose:
+            print(eval_episode_length_fg, eval_success_fg)
+        if eval_episode_length_fg == 1000:
+            success += 1
+        total += 1
+        train_env_fg.close()
+        eval_env_fg.close()
+    return success, total, nfq_agent
     
     
     
