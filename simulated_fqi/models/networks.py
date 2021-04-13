@@ -104,20 +104,17 @@ class ContrastiveNFQNetwork(nn.Module):
     def forward(self, x: torch.Tensor, group) -> torch.Tensor:
 
         x_shared = self.layers_shared(x)
-        
-        if self.is_contrastive:
-            x_shared = self.layers_last_shared(x_shared)
 
-            x_fg = self.layers_fg(x)
-            x_fg = self.layers_last_fg(x_fg)
-            # x = torch.cat((x_shared, x_fg * group), dim=-1)
-            # x = x_shared + x_fg * group
-            return x_shared + x_fg * group
+        if not self.is_contrastive:
+            group = 1
 
-        else:
-            x = x_shared
+        x_shared = self.layers_last_shared(x_shared)
 
-        return self.layers_last(x)
+        x_fg = self.layers_fg(x)
+        x_fg = self.layers_last_fg(x_fg)
+        # x = torch.cat((x_shared, x_fg * group), dim=-1)
+        # x = x_shared + x_fg * group
+        return x_shared + x_fg * group
 
     def freeze_shared_layers(self):
         for param in self.layers_shared.parameters():
