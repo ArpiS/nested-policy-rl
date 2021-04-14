@@ -76,7 +76,7 @@ def main(verbose=True, is_contrastive=False):
     # Setup environment
     bg_cart_mass = 1.0
     fg_cart_mass = 1.0
-    force_left = 5
+    force_left = 0
     # train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left)
     # train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left)
     # eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left)
@@ -147,29 +147,10 @@ def main(verbose=True, is_contrastive=False):
                 eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
                     eval_env_fg, render=False
                 )
-                # for param in nfq_net.layers_fg.parameters():
-                #     assert param.requires_grad == True
-                # for param in nfq_net.layers_last_fg.parameters():
-                #     assert param.requires_grad == True
-                # for param in nfq_net.layers_shared.parameters():
-                #     assert param.requires_grad == False
-                # for param in nfq_net.layers_last_shared.parameters():
-                #     assert param.requires_grad == False
             else:
-
-                # for param in nfq_net.layers_fg.parameters():
-                #     assert param.requires_grad == False
-                # for param in nfq_net.layers_last_fg.parameters():
-                #     assert param.requires_grad == False
-                # for param in nfq_net.layers_shared.parameters():
-                #     assert param.requires_grad == True
-                # for param in nfq_net.layers_last_shared.parameters():
-                #     assert param.requires_grad == True
                 eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
                     eval_env_bg, render=False
                 )
-
-            nfq_net.assert_correct_layers_frozen()
             
                 
         else:
@@ -179,6 +160,8 @@ def main(verbose=True, is_contrastive=False):
             eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
                 eval_env_fg, render=False
             )
+
+        nfq_net.assert_correct_layers_frozen()
 
         bg_success_queue = bg_success_queue[1:]
         bg_success_queue.append(1 if eval_success_bg else 0)
@@ -455,4 +438,4 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
 
 
 if __name__ == "__main__":
-    main(is_contrastive=True)
+    main(is_contrastive=False)

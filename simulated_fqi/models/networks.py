@@ -71,6 +71,10 @@ class ContrastiveNFQNetwork(nn.Module):
             nn.Linear(LAYER_WIDTH, 1),
             nonlinearity()
         )
+        self.layers_last = nn.Sequential(
+            nn.Linear(LAYER_WIDTH*2, 1),
+            nonlinearity()
+        )
         # Initialize weights to [-0.5, 0.5]
         def init_weights(m):
             if type(m) == nn.Linear:
@@ -83,11 +87,13 @@ class ContrastiveNFQNetwork(nn.Module):
         self.layers_last_shared.apply(init_weights)
         self.layers_fg.apply(init_weights)
         self.layers_last_fg.apply(init_weights)
+        self.layers_last.apply(init_weights)
 
-        for param in self.layers_fg.parameters():
-            param.requires_grad = False
-        for param in self.layers_last_fg.parameters():
-            param.requires_grad = False
+        if is_contrastive:
+            for param in self.layers_fg.parameters():
+                param.requires_grad = False
+            for param in self.layers_last_fg.parameters():
+                param.requires_grad = False
         #else:
         #    self.layers_last.apply(init_weights)
 
@@ -105,9 +111,10 @@ class ContrastiveNFQNetwork(nn.Module):
 
         x_fg = self.layers_fg(x)
         x_fg = self.layers_last_fg(x_fg)
-        # x = torch.cat((x_shared, x_fg * group), dim=-1)
-        # x = x_shared + x_fg * group
         return x_shared + x_fg * group
+        # x = torch.cat((x_shared, x_fg * group), dim=-1)
+        # return self.layers_last(x)
+        
 
     def freeze_shared_layers(self):
         for param in self.layers_shared.parameters():
@@ -122,7 +129,18 @@ class ContrastiveNFQNetwork(nn.Module):
             param.requires_grad = True
 
     def assert_correct_layers_frozen(self):
-        if self.freeze_shared:
+            
+        if not self.is_contrastive:
+            for param in self.layers_fg.parameters():
+                assert param.requires_grad == True
+            for param in self.layers_last_fg.parameters():
+                assert param.requires_grad == True
+            for param in self.layers_shared.parameters():
+                assert param.requires_grad == True
+            for param in self.layers_last_shared.parameters():
+                assert param.requires_grad == True
+
+        elif self.freeze_shared:
             for param in self.layers_fg.parameters():
                 assert param.requires_grad == True
             for param in self.layers_last_fg.parameters():

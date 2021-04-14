@@ -172,6 +172,7 @@ class NFQAgent:
         episode_cost = 0
         while not done and not info["time_limit"]:
             action = self.get_best_action(obs, eval_env.unique_actions, eval_env.group)
+            # print(action)
             obs, cost, done, info = eval_env.step(action)
             episode_cost += cost
             episode_length += 1
