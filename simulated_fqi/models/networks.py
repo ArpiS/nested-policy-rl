@@ -57,27 +57,20 @@ class ContrastiveNFQNetwork(nn.Module):
                 nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
                 nonlinearity()
             )
-        if self.is_contrastive:
-            self.layers_fg = nn.Sequential(
-                nn.Linear(self.state_dim+1, LAYER_WIDTH),
-                nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
-                nonlinearity()
-            )
-            self.layers_last_shared = nn.Sequential(
-                nn.Linear(LAYER_WIDTH, 1),
-                nonlinearity()
-            )
-            self.layers_last_fg = nn.Sequential(
-                nn.Linear(LAYER_WIDTH, 1),
-                nonlinearity()
-            )
-        else:
-            self.layers_last = nn.Sequential(
-                nn.Linear(LAYER_WIDTH, 1),
-                nonlinearity()
-            )
-
+        self.layers_fg = nn.Sequential(
+            nn.Linear(self.state_dim+1, LAYER_WIDTH),
+            nonlinearity(),
+            nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
+            nonlinearity()
+        )
+        self.layers_last_shared = nn.Sequential(
+            nn.Linear(LAYER_WIDTH, 1),
+            nonlinearity()
+        )
+        self.layers_last_fg = nn.Sequential(
+            nn.Linear(LAYER_WIDTH, 1),
+            nonlinearity()
+        )
         # Initialize weights to [-0.5, 0.5]
         def init_weights(m):
             if type(m) == nn.Linear:
@@ -86,17 +79,17 @@ class ContrastiveNFQNetwork(nn.Module):
         self.layers_shared.apply(init_weights)
         
         
-        if self.is_contrastive:
-            self.layers_last_shared.apply(init_weights)
-            self.layers_fg.apply(init_weights)
-            self.layers_last_fg.apply(init_weights)
+        #if self.is_contrastive:
+        self.layers_last_shared.apply(init_weights)
+        self.layers_fg.apply(init_weights)
+        self.layers_last_fg.apply(init_weights)
 
-            for param in self.layers_fg.parameters():
-                param.requires_grad = False
-            for param in self.layers_last_fg.parameters():
-                param.requires_grad = False
-        else:
-            self.layers_last.apply(init_weights)
+        for param in self.layers_fg.parameters():
+            param.requires_grad = False
+        for param in self.layers_last_fg.parameters():
+            param.requires_grad = False
+        #else:
+        #    self.layers_last.apply(init_weights)
 
 
         
