@@ -79,14 +79,18 @@ class ContrastiveNFQNetwork(nn.Module):
         def init_weights(m):
             if type(m) == nn.Linear:
                 torch.nn.init.uniform_(m.weight, -0.5, 0.5)
+        
+        def init_weights_fg(m):
+            if type(m) == nn.Linear:
+                torch.nn.init.zeros_(m.weight)
 
         self.layers_shared.apply(init_weights)
         
         
         #if self.is_contrastive:
         self.layers_last_shared.apply(init_weights)
-        self.layers_fg.apply(init_weights)
-        self.layers_last_fg.apply(init_weights)
+        self.layers_fg.apply(init_weights_fg)
+        self.layers_last_fg.apply(init_weights_fg)
         self.layers_last.apply(init_weights)
 
         if is_contrastive:
