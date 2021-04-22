@@ -372,6 +372,7 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
         
         printed_bg = False
         printed_fg = False
+
         if sum(bg_success_queue) == 3 and not nfq_net.freeze_shared == True:
             if epochs_fg == 0:
                 epochs_fg = epoch

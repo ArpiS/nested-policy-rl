@@ -84,10 +84,6 @@ class ContrastiveNFQNetwork(nn.Module):
             if type(m) == nn.Linear:
                 torch.nn.init.zeros_(m.weight)
 
-        def init_weights_zero(m):
-            if type(m) == nn.Linear:
-                torch.nn.init.zeros_(m.weight)
-
         self.layers_shared.apply(init_weights)
         
         
