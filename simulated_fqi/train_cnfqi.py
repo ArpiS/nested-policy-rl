@@ -161,7 +161,7 @@ def main(verbose=True, is_contrastive=False):
             eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
                 eval_env_fg, render=False
             )
-
+        
         nfq_net.assert_correct_layers_frozen()
 
         bg_success_queue = bg_success_queue[1:]
@@ -255,12 +255,11 @@ def main(verbose=True, is_contrastive=False):
     return eval_episode_length_bg, eval_episode_length_fg
 
 
-def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100, eval_env_max_steps=3000, discount=0.95, init_experience=400,
-        increment_experience=0, hint_to_goal=0, evaluations=5, force_left=5):
+def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100, eval_env_max_steps=3000, discount=0.95, init_experience=200,
+        increment_experience=0, hint_to_goal=0, evaluations=5, force_left=5, random_seed=1234):
     # Setup environment
     bg_cart_mass = 1.0
     fg_cart_mass = 1.0
-    force_left = force_left
     # train_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left)
     # train_env_fg = CartEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left)
     # eval_env_bg = CartEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left)
@@ -269,6 +268,12 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     train_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left, is_contrastive=is_contrastive)
     eval_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left, is_contrastive=is_contrastive)
     eval_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="eval", force_left=force_left, is_contrastive=is_contrastive)
+    
+    make_reproducible(random_seed, use_numpy=True, use_torch=True)
+    train_env_bg.seed(random_seed)
+    train_env_fg.seed(random_seed)
+    eval_env_bg.seed(random_seed)
+    eval_env_fg.seed(random_seed)
 
     # Log to File, Console, TensorBoard, W&B
     logger = get_logger()
@@ -305,14 +310,21 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
 
     bg_success_queue = [0] * 3
     fg_success_queue = [0] * 3
-
+    epochs_fg = 0
+    eval_fg = 0
     for epoch in range(epoch + 1):
 
         state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(all_rollouts)
-
-        loss = nfq_agent.train((state_action_b, target_q_values, groups))
-
+        
+        if not nfq_net.freeze_shared:
+            loss = nfq_agent.train((state_action_b, target_q_values, groups))
+        
         eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = 0, 0, 0
+        if nfq_net.freeze_shared:
+            eval_fg += 1
+            
+            if eval_fg > 50:
+                loss = nfq_agent.train((state_action_b, target_q_values, groups))
 
         if is_contrastive:
             # import ipdb; ipdb.set_trace()
@@ -357,8 +369,13 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
 
         fg_success_queue = fg_success_queue[1:]
         fg_success_queue.append(1 if eval_success_fg else 0)
-
-        if sum(bg_success_queue) == 3:
+        
+        printed_bg = False
+        printed_fg = False
+        if sum(bg_success_queue) == 3 and not nfq_net.freeze_shared == True:
+            if epochs_fg == 0:
+                epochs_fg = epoch
+            printed_bg = True
             nfq_net.freeze_shared = True
             if verbose:
                 print("FREEZING SHARED")
@@ -391,8 +408,8 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
                     epoch, eval_episode_length_bg, eval_episode_cost_bg, eval_episode_length_fg, eval_episode_cost_fg, loss
                 )
             )
-
         if sum(fg_success_queue) == 3:
+            printed_fg = True
             if verbose:
                 logger.info(
                     "Epoch {:4d} | Total Cycles {:6d} | Total Cost {:4.2f}".format(
@@ -407,7 +424,9 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     eval_env_bg.max_steps = 1000
     eval_env_fg.max_steps = 1000
 
-    success = 0
+    performance = []
+    num_steps_bg = []
+    num_steps_fg = []
     total = 0
     for it in range(evaluations):
 
@@ -416,8 +435,8 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
         # eval_env_bg.create_gif()
         if verbose:
             print(eval_episode_length_bg, eval_success_bg)
-        if eval_episode_length_bg == 1000:
-            success += 1
+        num_steps_bg.append(eval_episode_length_bg)
+        performance.append(eval_episode_length_bg)
         total += 1
         train_env_bg.close()
         eval_env_bg.close()
@@ -427,12 +446,15 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
         # eval_env_fg.create_gif()
         if verbose:
             print(eval_episode_length_fg, eval_success_fg)
-        if eval_episode_length_fg == 1000:
-            success += 1
+        num_steps_fg.append(eval_episode_length_fg)
+        performance.append(eval_episode_length_fg)
         total += 1
         train_env_fg.close()
         eval_env_fg.close()
-    return success, total, nfq_agent
+    print("Fg trained after " + str(epochs_fg) + " epochs")
+    print("BG stayed up for steps: ", num_steps_bg)
+    print("FG stayed up for steps: ", num_steps_fg)
+    return printed_bg, printed_fg, performance, nfq_agent
     
     
     
