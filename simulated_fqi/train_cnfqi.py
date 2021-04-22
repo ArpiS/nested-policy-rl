@@ -254,7 +254,7 @@ def main(verbose=True, is_contrastive=False):
 
 
 def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100, eval_env_max_steps=3000, discount=0.95, init_experience=200,
-        increment_experience=0, hint_to_goal=0, evaluations=5, force_left=5):
+        increment_experience=0, hint_to_goal=0, evaluations=5, force_left=5, random_seed=1234):
     # Setup environment
     bg_cart_mass = 1.0
     fg_cart_mass = 1.0
@@ -266,6 +266,12 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     train_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left, is_contrastive=is_contrastive)
     eval_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left, is_contrastive=is_contrastive)
     eval_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="eval", force_left=force_left, is_contrastive=is_contrastive)
+    
+    make_reproducible(random_seed, use_numpy=True, use_torch=True)
+    train_env_bg.seed(random_seed)
+    train_env_fg.seed(random_seed)
+    eval_env_bg.seed(random_seed)
+    eval_env_fg.seed(random_seed)
 
     # Log to File, Console, TensorBoard, W&B
     logger = get_logger()
