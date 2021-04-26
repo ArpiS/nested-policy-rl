@@ -9,7 +9,7 @@ from models.agents import NFQAgent
 from models.networks import NFQNetwork, ContrastiveNFQNetwork
 # from simulated_fqi import NFQAgent
 # from simulated_fqi import NFQNetwork, ContrastiveNFQNetwork
-from util import get_logger, load_models, make_reproducible, save_models
+from util import get_logger, close_logger, load_models, make_reproducible, save_models
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
@@ -137,7 +137,8 @@ def main(verbose=True, is_contrastive=False):
 
         state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(all_rollouts)
 
-        loss = nfq_agent.train((state_action_b, target_q_values, groups))
+        if not nfq_net.freeze_shared:
+            loss = nfq_agent.train((state_action_b, target_q_values, groups))
 
 
         eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = 0, 0, 0
@@ -169,7 +170,7 @@ def main(verbose=True, is_contrastive=False):
         fg_success_queue = fg_success_queue[1:]
         fg_success_queue.append(1 if eval_success_fg else 0)
 
-        if sum(bg_success_queue) == 3:
+        if sum(bg_success_queue) == 3 and not nfq_net.freeze_shared:
             nfq_net.freeze_shared = True
             print("FREEZING SHARED")
             if is_contrastive:
@@ -235,7 +236,7 @@ def main(verbose=True, is_contrastive=False):
     eval_env_fg.max_steps = 1000
 
     # eval_env_bg.save_gif = True
-    eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
+    eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, render=False)
     # eval_env_bg.create_gif()
 
     print(eval_episode_length_bg, eval_success_bg)
@@ -243,13 +244,14 @@ def main(verbose=True, is_contrastive=False):
     eval_env_bg.close()
 
     # eval_env_fg.save_gif = True
-    eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
+    eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, render=False)
     # eval_env_fg.create_gif()
 
     print(eval_episode_length_fg, eval_success_fg)
     train_env_fg.close()
     eval_env_fg.close()
     #import ipdb; ipdb.set_trace()
+    close_logger()
     return eval_episode_length_bg, eval_episode_length_fg
 
 
@@ -370,7 +372,8 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
         
         printed_bg = False
         printed_fg = False
-        if sum(bg_success_queue) == 3:
+
+        if sum(bg_success_queue) == 3 and not nfq_net.freeze_shared == True:
             if epochs_fg == 0:
                 epochs_fg = epoch
             printed_bg = True
@@ -460,4 +463,25 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
 
 
 if __name__ == "__main__":
-    main(is_contrastive=False)
+    # main(is_contrastive=True)
+
+    n_repeats = 40
+    fqi_lengths = []
+    cfqi_lengths = []
+
+    for n in range(n_repeats):
+        eval_episode_length_bg, eval_episode_length_fg = main(is_contrastive=False)
+        fqi_lengths.append(eval_episode_length_fg)
+
+        eval_episode_length_bg, eval_episode_length_fg = main(is_contrastive=True)
+        cfqi_lengths.append(eval_episode_length_fg)
+
+        plt.boxplot([fqi_lengths, cfqi_lengths])
+        plt.savefig("./intermediate_results.png")
+        plt.close()
+    # plt.show()
+
+    import ipdb; ipdb.set_trace()
+
+
+

@@ -5,3 +5,4 @@ __pycache__/
 gym/
 simulated_fqi/behavior.pkl
 tmp/
+*.log
