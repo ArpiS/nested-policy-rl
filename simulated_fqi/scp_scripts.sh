@@ -1,5 +1,7 @@
 scp train_cnfqi.py ${PRINCETONNETID}@tiger.princeton.edu:/scratch/gpfs/${PRINCETONNETID}/contrastive_rl
 scp test_force_zero.py ${PRINCETONNETID}@tiger.princeton.edu:/scratch/gpfs/${PRINCETONNETID}/contrastive_rl
+scp test_force_range.py ${PRINCETONNETID}@tiger.princeton.edu:/scratch/gpfs/${PRINCETONNETID}/contrastive_rl
+scp sample_size_experiment.py ${PRINCETONNETID}@tiger.princeton.edu:/scratch/gpfs/${PRINCETONNETID}/contrastive_rl
 scp cartpole.conf ${PRINCETONNETID}@tiger.princeton.edu:/scratch/gpfs/${PRINCETONNETID}/contrastive_rl
 scp -r ./util/ ${PRINCETONNETID}@tiger.princeton.edu:/scratch/gpfs/${PRINCETONNETID}/contrastive_rl
 scp ./environments/cartpole.py ${PRINCETONNETID}@tiger.princeton.edu:/scratch/gpfs/${PRINCETONNETID}/contrastive_rl/environments

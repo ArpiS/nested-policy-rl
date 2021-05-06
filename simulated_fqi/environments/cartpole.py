@@ -52,7 +52,7 @@ class CartPoleRegulatorEnv(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self, mode="train", masscart=1.0, masspole=0.1, length=0.5, force_left=0.0, is_contrastive=True, group=1):
+    def __init__(self, mode="train", masscart=1.0, masspole=0.1, length=0.5, force_left=0.0, is_contrastive=True, group=1, fg_only=False):
         self.gravity = 9.8
         self.masscart = masscart
         self.masspole = 0.1
@@ -68,6 +68,7 @@ class CartPoleRegulatorEnv(gym.Env):
         self.force_left = force_left
         self.save_gif = False
         self.is_contrastive = is_contrastive
+        self.fg_only = fg_only
 
         assert mode in ["train", "eval"]
         self.mode = mode
@@ -117,7 +118,7 @@ class CartPoleRegulatorEnv(gym.Env):
         # else:
         #     force = self.force_mag if action == 1 else -self.force_mag
 
-        if self.group == 1:
+        if self.group == 1 or self.fg_only:
             force -= self.force_left
         
         costheta = math.cos(theta)
