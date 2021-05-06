@@ -325,6 +325,7 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     
     state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(all_rollouts_test)
     X_test = state_action_b
+    test_groups = groups
 
     bg_success_queue = [0] * 3
     fg_success_queue = [0] * 3
@@ -334,6 +335,7 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
 
         state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(all_rollouts)
         X = state_action_b
+        train_groups = groups
         
         if not nfq_net.freeze_shared:
             loss = nfq_agent.train((state_action_b, target_q_values, groups))
@@ -474,9 +476,125 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     print("Fg trained after " + str(epochs_fg) + " epochs")
     print("BG stayed up for steps: ", num_steps_bg)
     print("FG stayed up for steps: ", num_steps_fg)
-    return printed_bg, printed_fg, performance, nfq_agent, X, X_test
+    return performance
     
     
+    
+
+def warm_start(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100, eval_env_max_steps=3000, discount=0.95, init_experience=200,
+        increment_experience=0, hint_to_goal=0, evaluations=5, force_left=5, random_seed=1234):
+    # Setup environment
+    bg_cart_mass = 1.0
+    fg_cart_mass = 1.0
+    init_experience = 400
+    force_left = 5
+    is_contrastive = False
+
+    train_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="train", force_left=force_left, is_contrastive=is_contrastive)
+    train_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="train", force_left=force_left, is_contrastive=is_contrastive)
+    eval_env_bg = CartPoleRegulatorEnv(group=0, masscart=bg_cart_mass, mode="eval", force_left=force_left, is_contrastive=is_contrastive)
+    eval_env_fg = CartPoleRegulatorEnv(group=1, masscart=fg_cart_mass, mode="eval", force_left=force_left, is_contrastive=is_contrastive)
+
+    # NFQ Main loop
+    bg_rollouts = []
+    fg_rollouts = []
+    total_cost = 0
+    if init_experience > 0:
+        for _ in range(init_experience):
+            rollout_bg, episode_cost = train_env_bg.generate_rollout(
+                None, render=False, group=0
+            )
+            rollout_fg, episode_cost = train_env_fg.generate_rollout(
+                None, render=False, group=1
+            )
+            bg_rollouts.extend(rollout_bg)
+            fg_rollouts.extend(rollout_fg)
+            total_cost += episode_cost
+
+    bg_rollouts.extend(fg_rollouts)
+    all_rollouts = bg_rollouts.copy()
+
+    bg_rollouts_test = []
+    fg_rollouts_test = []
+    if init_experience > 0:
+        for _ in range(init_experience):
+            rollout_bg, episode_cost = eval_env_bg.generate_rollout(
+                None, render=False, group=0
+            )
+            rollout_fg, episode_cost = eval_env_fg.generate_rollout(
+                None, render=False, group=1
+            )
+            bg_rollouts_test.extend(rollout_bg)
+            fg_rollouts_test.extend(rollout_fg)
+    bg_rollouts_test.extend(fg_rollouts)
+    all_rollouts_test = bg_rollouts_test.copy()
+    bg_success_queue = [0] * 3
+    fg_success_queue = [0] * 3
+    bg_converged = False
+
+    # Setup agent
+    nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive)
+    optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
+    nfq_agent = NFQAgent(nfq_net, optimizer)
+    for ep in range(epoch + 1):
+
+        if bg_converged:
+            state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(fg_rollouts)
+        else:
+            state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(bg_rollouts)
+
+        loss = nfq_agent.train((state_action_b, target_q_values, groups))
+
+        eval_episode_length_fg = 0
+        eval_episode_length_bg = 0
+        eval_success_fg = False
+        eval_success_bg = False
+        if bg_converged:
+            eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
+                eval_env_fg, render=False
+            )
+        else:
+            eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
+            eval_env_bg, render=False
+            )
+
+        bg_success_queue = bg_success_queue[1:]
+        bg_success_queue.append(1 if eval_success_bg else 0)
+
+        fg_success_queue = fg_success_queue[1:]
+        fg_success_queue.append(1 if eval_success_fg else 0)
+
+        if sum(bg_success_queue) == 3:
+            bg_converged = True
+
+        if sum(fg_success_queue) == 3:
+            if verbose:
+                print("FG Converged")
+            break
+
+        if verbose:
+            print("Epoch: " + str(ep) + " BG Converged: " + str(bg_converged) + " Eval BG: " + str(eval_episode_length_bg)
+                 + " Eval FG: " + str(eval_episode_length_fg))
+    eval_env_bg.step_number = 0
+    eval_env_fg.step_number = 0
+
+    eval_env_bg.max_steps = 1000
+    eval_env_fg.max_steps = 1000
+
+    performance = []
+    for it in range(evaluations):
+
+        eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
+        performance.append(eval_episode_length_bg)
+        train_env_bg.close()
+        eval_env_bg.close()
+
+        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
+        performance.append(eval_episode_length_fg)
+        train_env_fg.close()
+        eval_env_fg.close()
+   
+    return performance
     
     
 
