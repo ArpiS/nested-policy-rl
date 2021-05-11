@@ -131,6 +131,18 @@ class ContrastiveNFQNetwork(nn.Module):
             param.requires_grad = True
         for param in self.layers_last_fg.parameters():
             param.requires_grad = True
+    
+    def freeze_last_layers(self):
+        for param in self.layers_last_shared.parameters():
+            param.requires_grad = False
+        for param in self.layers_last_fg.parameters():
+            param.requires_grad = False
+    
+    def unfreeze_last_layers(self):
+        for param in self.layers_last_shared.parameters():
+            param.requires_grad = True
+        for param in self.layers_last_fg.parameters():
+            param.requires_grad = True
 
     def assert_correct_layers_frozen(self):
             
