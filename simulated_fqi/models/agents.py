@@ -168,7 +168,7 @@ class NFQAgent:
         episode_length = 0
         obs = eval_env.reset()
         done = False
-        # render = False
+        render = False
         info = {"time_limit": False}
         episode_cost = 0
         while not done and not info["time_limit"]:
