@@ -453,7 +453,7 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     for it in range(evaluations):
 
         # eval_env_bg.save_gif = True
-        eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
+        eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, False)
         # eval_env_bg.create_gif()
         if verbose:
             print(eval_episode_length_bg, eval_success_bg)
@@ -464,7 +464,7 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
         eval_env_bg.close()
 
         # eval_env_fg.save_gif = True
-        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
+        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, False)
         # eval_env_fg.create_gif()
         if verbose:
             print(eval_episode_length_fg, eval_success_fg)
@@ -584,12 +584,12 @@ def warm_start(verbose=True, is_contrastive=False, epoch=1000, train_env_max_ste
     performance = []
     for it in range(evaluations):
 
-        eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
+        eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, False)
         performance.append(eval_episode_length_bg)
         train_env_bg.close()
         eval_env_bg.close()
 
-        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
+        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, False)
         performance.append(eval_episode_length_fg)
         train_env_fg.close()
         eval_env_fg.close()

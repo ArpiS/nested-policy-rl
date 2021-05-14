@@ -24,6 +24,8 @@ plt.xlabel("")
 plt.ylabel("Number of successful steps")
 plt.tight_layout()
 # plt.savefig("")
+plt.title("Class imbalance test")
+plt.tight_layout()
 plt.show()
 import ipdb; ipdb.set_trace()
 
