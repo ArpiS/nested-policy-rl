@@ -446,7 +446,8 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     eval_env_bg.max_steps = 1000
     eval_env_fg.max_steps = 1000
 
-    performance = []
+    performance_fg = []
+    performance_bg = []
     num_steps_bg = []
     num_steps_fg = []
     total = 0
@@ -458,7 +459,7 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
         if verbose:
             print(eval_episode_length_bg, eval_success_bg)
         num_steps_bg.append(eval_episode_length_bg)
-        performance.append(eval_episode_length_bg)
+        performance_bg.append(eval_episode_length_bg)
         total += 1
         train_env_bg.close()
         eval_env_bg.close()
@@ -469,14 +470,14 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
         if verbose:
             print(eval_episode_length_fg, eval_success_fg)
         num_steps_fg.append(eval_episode_length_fg)
-        performance.append(eval_episode_length_fg)
+        performance_fg.append(eval_episode_length_fg)
         total += 1
         train_env_fg.close()
         eval_env_fg.close()
     print("Fg trained after " + str(epochs_fg) + " epochs")
     print("BG stayed up for steps: ", num_steps_bg)
     print("FG stayed up for steps: ", num_steps_fg)
-    return performance
+    return performance_fg, performance_bg
     
     
     
@@ -580,20 +581,21 @@ def warm_start(verbose=True, is_contrastive=False, epoch=1000, train_env_max_ste
     eval_env_bg.max_steps = 1000
     eval_env_fg.max_steps = 1000
 
-    performance = []
+    performance_fg = []
+    performance_bg = []
     for it in range(evaluations):
 
         eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, False)
-        performance.append(eval_episode_length_bg)
+        performance_bg.append(eval_episode_length_bg)
         train_env_bg.close()
         eval_env_bg.close()
 
         eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, False)
-        performance.append(eval_episode_length_fg)
+        performance_fg.append(eval_episode_length_fg)
         train_env_fg.close()
         eval_env_fg.close()
    
-    return performance
+    return performance_fg, performance_bg
     
 
 def transfer_learning(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100, eval_env_max_steps=3000, discount=0.95, init_experience=200, increment_experience=0, hint_to_goal=0, evaluations=5, force_left=5, random_seed=1234):
@@ -696,20 +698,21 @@ def transfer_learning(verbose=True, is_contrastive=False, epoch=1000, train_env_
     eval_env_bg.max_steps = 1000
     eval_env_fg.max_steps = 1000
 
-    performance = []
+    performance_fg = []
+    performance_bg = []
     for it in range(evaluations):
 
         eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, True)
-        performance.append(eval_episode_length_bg)
+        performance_bg.append(eval_episode_length_bg)
         train_env_bg.close()
         eval_env_bg.close()
 
         eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, True)
-        performance.append(eval_episode_length_fg)
+        performance_fg.append(eval_episode_length_fg)
         train_env_fg.close()
         eval_env_fg.close()
 
-    return performance
+    return performance_fg, performance_bg
     
     
 
