@@ -477,7 +477,30 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     print("Fg trained after " + str(epochs_fg) + " epochs")
     print("BG stayed up for steps: ", num_steps_bg)
     print("FG stayed up for steps: ", num_steps_fg)
-    return performance_fg, performance_bg
+    
+    state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(all_rollouts)
+    X = (state_action_b, groups)
+
+    bg_rollouts = []
+    fg_rollouts = []
+    total_cost = 0
+    init_experience = 50
+    if init_experience > 0:
+        for _ in range(init_experience):
+            rollout_bg, episode_cost = eval_env_bg.generate_rollout(
+                None, render=False, group=0
+            )
+            rollout_fg, episode_cost = eval_env_fg.generate_rollout(
+                None, render=False, group=1
+            )
+            bg_rollouts.extend(rollout_bg)
+            fg_rollouts.extend(rollout_fg)
+            
+    bg_rollouts.extend(fg_rollouts)
+    all_rollouts = bg_rollouts.copy()
+    state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(all_rollouts)
+    X_test = (state_action_b, groups)
+    return performance_fg, performance_bg, nfq_agent, X, X_test
     
     
     

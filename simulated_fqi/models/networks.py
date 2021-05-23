@@ -104,7 +104,7 @@ class ContrastiveNFQNetwork(nn.Module):
 
         
 
-    def forward(self, x: torch.Tensor, group=0) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, group=1) -> torch.Tensor:
 
         x_shared = self.layers_shared(x)
 
