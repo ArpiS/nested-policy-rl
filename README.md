@@ -55,12 +55,14 @@ python eval.py --model-file mymodel.pth --benchmark imagenet
 
 ## Results
 
+As an example of our results, we show the outcome of the "cumulative reward" experiment in the cartpole environment below (please see paper for full results). We find that CFQI outperforms three competing methods (FQI, warm start, and transfer learning) in both the foreground and background environments.
+
 <p float="left">
   <img src="simulated_fqi/plots/bg_force_v_performance.png" width="400" />
   <img src="simulated_fqi/plots/fg_force_v_performance.png" width="400" /> 
 </p>
 
-Our model achieves the following performance on :
+<!-- Our model achieves the following performance on :
 
 ### [Image Classification on ImageNet](https://paperswithcode.com/sota/image-classification-on-imagenet)
 
@@ -68,7 +70,7 @@ Our model achieves the following performance on :
 | ------------------ |---------------- | -------------- |
 | My awesome model   |     85%         |      95%       |
 
->📋  Include a table of results from your paper, and link back to the leaderboard for clarity and context. If your main result is a figure, include that figure and link to the command or notebook to reproduce it.
+>📋  Include a table of results from your paper, and link back to the leaderboard for clarity and context. If your main result is a figure, include that figure and link to the command or notebook to reproduce it. -->
 
 
 ## Contributing
