@@ -14,9 +14,9 @@ pip install -r requirements.txt
 
 In this repository, we demonstrate how to reproduce results on an OpenAI gym environment. We include code but do not include instructions for preprocessing MIMIC-IV since it is a semi-private dataset available only to authorized users.
 
-## Training
+## Training and Evaluation
 
-All of the algorithms in this paper are available in simulated_fqi/train.py. To run each of the algorithms (CFQI, FQI, Warm Start, Transfer Learning):
+All of the algorithms in this paper are available in simulated_fqi/train.py. To run each of the algorithms (FQI, CFQI, Warm Start, Transfer Learning):
 
 ```train
 python train.py fqi
@@ -24,19 +24,7 @@ python train.py cfqi
 python train.py warm_start
 python train.py transfer_learning
 ```
-
->📋  Describe how to train the models, with example commands on how to train the models in your paper, including the full training procedure and appropriate hyperparameters.
-
-## Evaluation
-
-To evaluate my model on ImageNet, run:
-
-```eval
-python eval.py --model-file mymodel.pth --benchmark imagenet
-```
-
->📋  Describe how to evaluate the trained models on benchmarks reported in the paper, give commands that produce the results (section below).
-
+Hyperparameters can be modified in simulated_fqi/train.py. Default hyperparameters are used for all experiments.
 
 ## Results
 
