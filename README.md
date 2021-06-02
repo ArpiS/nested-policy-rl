@@ -1,4 +1,5 @@
 # Contrastive fitted Q-iteration: off-policy reinforcement learning for case-control environments
+![Build Status](https://github.com/bee-hive/contrastive-rl/actions/workflows/crl_workflow.yml/badge.svg)
 
 This repository is the official implementation of [Contrastive fitted Q-iteration: off-policy reinforcement learning for case-control environments](https://neurips.cc/).
 
