@@ -25,7 +25,7 @@ python train.py warm_start
 python train.py transfer_learning
 ```
 
->📋  Describe how to train the models, with example commands on how to train the models in your paper, including the full training procedure and appropriate hyperparameters.
+<!-- >📋  Describe how to train the models, with example commands on how to train the models in your paper, including the full training procedure and appropriate hyperparameters. -->
 
 ## Evaluation
 
@@ -50,7 +50,7 @@ Each of these experiments outputs a `.json` file containing the results. The plo
 python eval.py --model-file mymodel.pth --benchmark imagenet
 ```
 
->📋  Describe how to evaluate the trained models on benchmarks reported in the paper, give commands that produce the results (section below).
+<!-- >📋  Describe how to evaluate the trained models on benchmarks reported in the paper, give commands that produce the results (section below). -->
 
 
 ## Results
