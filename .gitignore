@@ -1,8 +1,11 @@
 *.pyc
 .ipynb_checkpoints/
 __pycache__/
+figures/
 .DS_Store
 gym/
 simulated_fqi/behavior.pkl
 tmp/
 *.log
+job.slurm*
+*.sh
