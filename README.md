@@ -55,10 +55,9 @@ python eval.py --model-file mymodel.pth --benchmark imagenet
 
 ## Results
 
-![cartpole_results](simulated_fqi/plots/bg_force_v_performance.png)
 <p float="left">
-  <img src="simulated_fqi/plots/bg_force_v_performance.png" width="100" />
-  <img src="simulated_fqi/plots/fg_force_v_performance.png" width="100" /> 
+  <img src="simulated_fqi/plots/bg_force_v_performance.png" width="400" />
+  <img src="simulated_fqi/plots/fg_force_v_performance.png" width="400" /> 
 </p>
 
 Our model achieves the following performance on :
