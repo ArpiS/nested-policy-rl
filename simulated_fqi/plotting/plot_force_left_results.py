@@ -46,7 +46,7 @@ matplotlib.rc("font", **font)
 # plt.show()
 
 
-with open('force_left_v_performance.json') as f:
+with open('../force_left_v_performance.json') as f:
   results = json.load(f)
 
 
@@ -118,9 +118,9 @@ def plot_performance(results, ds='bg', figname=""):
 # plt.figure(figsize=(24, 8))
 # plt.suptitle("Performance when force on cart is modified")
 # plt.subplot(121)
-plot_performance(results, ds='bg', figname="./plots/bg_force_v_performance.png")
+plot_performance(results, ds='bg', figname="../plots/bg_force_v_performance.png")
 # plt.subplot(122)
-plot_performance(results, ds='fg', figname="./plots/fg_force_v_performance.png")
+plot_performance(results, ds='fg', figname="../plots/fg_force_v_performance.png")
 # plt.tight_layout()
 # plt.savefig("./plots/force_v_performance.png")
 # plt.show()

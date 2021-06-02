@@ -11,7 +11,7 @@ matplotlib.rc("font", **font)
 
 ##### Class imbalance
 
-with open('linear_model_comparison.json') as f:
+with open('../linear_model_comparison.json') as f:
   results = json.load(f)
 
 results_df = pd.DataFrame(results)
@@ -24,7 +24,7 @@ plt.xlabel("")
 plt.ylabel("Successful steps")
 plt.title(r"Approximation functions $f$")
 plt.tight_layout()
-plt.savefig("./plots/linear_model_comparison.png")
+plt.savefig("../plots/linear_model_comparison.png")
 plt.show()
 import ipdb; ipdb.set_trace()
 

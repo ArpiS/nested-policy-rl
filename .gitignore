@@ -9,3 +9,4 @@ tmp/
 *.log
 tests/
 !tests/test_test.py
+job.slurm*

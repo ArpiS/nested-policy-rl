@@ -11,7 +11,7 @@ matplotlib.rc("font", **font)
 
 
 
-with open('shuffle_test.json') as f:
+with open('../shuffle_test.json') as f:
   results = json.load(f)
 
 
@@ -22,7 +22,7 @@ sns.distplot(results['bg'], label='Background')
 plt.legend()
 plt.xlabel("Steps Survived")
 plt.tight_layout()
-plt.savefig("./plots/shuffle_test.png")
+plt.savefig("../plots/shuffle_test.png")
 plt.show()
 
 import ipdb; ipdb.set_trace()

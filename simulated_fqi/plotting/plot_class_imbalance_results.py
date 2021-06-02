@@ -18,7 +18,7 @@ def mean_confidence_interval(data, confidence=0.95):
 
 ##### Class imbalance
 
-with open('class_imbalance_cfqi.json') as f:
+with open('../class_imbalance_cfqi.json') as f:
   results = json.load(f)
 
 cfqi_bg_success = []
@@ -125,7 +125,7 @@ plt.ylabel("Steps survived")
 plt.title("Performance with imbalanced datasets")
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.) #, fontsize=15)
 plt.tight_layout()
-plt.savefig("./plots/class_imbalance.pdf")
+plt.savefig("../plots/class_imbalance.pdf")
 plt.show()
 import ipdb; ipdb.set_trace()
     

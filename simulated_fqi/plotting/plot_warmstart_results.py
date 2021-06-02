@@ -42,7 +42,7 @@ import matplotlib
 
 
 
-with open('warm_start_forcerange.json') as f:
+with open('../warm_start_forcerange.json') as f:
   results = json.load(f)
 # import ipdb; ipdb.set_trace()
 
