@@ -7,6 +7,5 @@ gym/
 simulated_fqi/behavior.pkl
 tmp/
 *.log
-tests/
-!tests/test_test.py
 job.slurm*
+*.sh
