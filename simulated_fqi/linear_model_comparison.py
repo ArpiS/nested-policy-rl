@@ -6,16 +6,17 @@ from environments import CartPoleRegulatorEnv
 from environments import CartEnv
 from environments import AcrobotEnv
 from models.agents import NFQAgent
-from models.networks import NFQNetwork, ContrastiveNFQNetwork
+from models.networks import NFQNetwork, ContrastiveNFQNetwork, ContrastiveLinearModel
 # from simulated_fqi import NFQAgent
 # from simulated_fqi import NFQNetwork, ContrastiveNFQNetwork
 from util import get_logger, close_logger, load_models, make_reproducible, save_models
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
+from train_cnfqi import run
 
 
-def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100, eval_env_max_steps=3000, discount=0.95, init_experience_bg=200, init_experience_fg=200, fg_only=False,
+def run_lm(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100, eval_env_max_steps=3000, discount=0.95, init_experience_bg=200, init_experience_fg=200, fg_only=False,
         increment_experience=0, hint_to_goal=0, evaluations=5, force_left=5, random_seed=1234):
     # Setup environment
     bg_cart_mass = 1.0
@@ -36,11 +37,11 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
     logger = get_logger()
 
     # Setup agent
-    nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive)
+    nfq_net = ContrastiveLinearModel(state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive)
     # optimizer = optim.Rprop(nfq_net.parameters())
 
     if is_contrastive:
-        optimizer = optim.Adam(itertools.chain(nfq_net.layers_shared.parameters(), nfq_net.layers_last_shared.parameters()), lr=1e-1)
+        optimizer = optim.Adam(itertools.chain(nfq_net.layers_shared.parameters()), lr=1e-1)
     else:
         optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
 
@@ -115,21 +116,13 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
                 )
                 for param in nfq_net.layers_fg.parameters():
                     assert param.requires_grad == True
-                for param in nfq_net.layers_last_fg.parameters():
-                    assert param.requires_grad == True
                 for param in nfq_net.layers_shared.parameters():
-                    assert param.requires_grad == False
-                for param in nfq_net.layers_last_shared.parameters():
                     assert param.requires_grad == False
             else:
 
                 for param in nfq_net.layers_fg.parameters():
                     assert param.requires_grad == False
-                for param in nfq_net.layers_last_fg.parameters():
-                    assert param.requires_grad == False
                 for param in nfq_net.layers_shared.parameters():
-                    assert param.requires_grad == True
-                for param in nfq_net.layers_last_shared.parameters():
                     assert param.requires_grad == True
                 eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
                     eval_env_bg, render=False
@@ -176,7 +169,7 @@ def run(verbose=True, is_contrastive=False, epoch=1000, train_env_max_steps=100,
             #     for param in nfq_net.layers_last_fg.parameters():
             #         param.requires_grad = False
 
-                optimizer = optim.Adam(itertools.chain(nfq_net.layers_fg.parameters(), nfq_net.layers_last_fg.parameters()), lr=1e-1)
+                optimizer = optim.Adam(itertools.chain(nfq_net.layers_fg.parameters()), lr=1e-1)
                 nfq_agent._optimizer = optimizer
             # break
 
@@ -249,47 +242,25 @@ if __name__ == "__main__":
 
     import json
 
-    num_iter = 10000
+    num_iter=10000
     results = {}
 
-    # results['fg_only'] = []
-    # results['cfqi'] = []
-    # results['fqi_joint'] = []
-    FORCE_LEFT = 8
+    results['linear_model'] = []
+    results['nfqi'] = []
 
-    total_samples = 400
-    fg_sample_fractions = [0.1*x for x in np.arange(1, 6)]
-
-    for i in fg_sample_fractions:
-        results[i] = {}
-        results[i]['fg_only'] = {}
-        results[i]['cfqi'] = {}
-        results[i]['fqi_joint'] = {}
-    
 
     for i in range(num_iter):
 
-        for fg_sample_fraction in fg_sample_fractions:
+        # Linear model
+        printed_bg, printed_fg, performance, nfq_agent, X = run_lm(is_contrastive=False, init_experience_bg=200, init_experience_fg=40, fg_only=False, force_left=0, epoch=200, verbose=True)
+        results['linear_model'].extend(performance)
 
-            n_fg = int(total_samples * fg_sample_fraction)
-            n_bg = int(total_samples - n_fg)
 
-            # Only train/test on small set of foreground samples
-            printed_bg, printed_fg, performance, nfq_agent, X = run(is_contrastive=False, init_experience_bg=n_fg//2, init_experience_fg=n_fg//2, fg_only=True, force_left=FORCE_LEFT, epoch=1000, verbose=False)
-            results[fg_sample_fraction]['fg_only'][i] = performance
-            # results['fg_only'].extend(performance)
+        # Neural net
+        performance = run(verbose=False, is_contrastive=True, evaluations=5, force_left=0)
+        results['nfqi'].extend(performance)
 
-            # Use contrastive model with larger pool of background samples
-            printed_bg, printed_fg, performance, nfq_agent, X = run(is_contrastive=True, init_experience_bg=n_bg, init_experience_fg=n_fg, fg_only=False, force_left=FORCE_LEFT, epoch=1000, verbose=False)
-            results[fg_sample_fraction]['cfqi'][i] = performance
-            # results['cfqi'].extend(performance)
-
-            # Use non-contrastive model with larger pool of background samples
-            printed_bg, printed_fg, performance, nfq_agent, X = run(is_contrastive=False, init_experience_bg=n_bg, init_experience_fg=n_fg, fg_only=False, force_left=FORCE_LEFT, epoch=1000, verbose=False)
-            results[fg_sample_fraction]['fqi_joint'][i] = performance
-            # results['fqi_joint'].extend(performance)
-
-            with open('class_imbalance_cfqi.json', 'w') as f:
-                json.dump(results, f)
+        with open('linear_model_comparison.json', 'w') as f:
+            json.dump(results, f)
 
 

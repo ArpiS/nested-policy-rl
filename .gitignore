@@ -1,6 +1,7 @@
 *.pyc
 .ipynb_checkpoints/
 __pycache__/
+figures/
 .DS_Store
 gym/
 simulated_fqi/behavior.pkl
