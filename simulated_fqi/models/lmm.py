@@ -10,18 +10,20 @@ import pandas as pd
 import ipdb
 
 
-class LMM():
-
-    def __init__(self, model='regression', num_classes=None, is_pendulum=True):
+class LMM:
+    def __init__(self, model="regression", num_classes=None, is_pendulum=True):
 
         self.model = model
         self.num_classes = num_classes
         self.is_pendulum = is_pendulum
-        if self.model == 'classification' and self.num_classes == None:
-            raise Exception("Need to specify number of classes if model is classification")
+        if self.model == "classification" and self.num_classes == None:
+            raise Exception(
+                "Need to specify number of classes if model is classification"
+            )
 
     def fit(self, X, y, groups, method="bfgs", verbose=True):
         import matplotlib.pyplot as plt
+
         n, p = X.shape
         if method == "bfgs":
             # Add columns of ones for intercept
@@ -29,17 +31,17 @@ class LMM():
 
             def f(x):
                 # optimize MSE
-                if self.model == 'regression':
-                    beta_shared, beta_fg = x[:p + 1], x[p + 1:]
+                if self.model == "regression":
+                    beta_shared, beta_fg = x[: p + 1], x[p + 1 :]
                     assert beta_shared.shape[0] == beta_fg.shape[0]
                     preds = X @ beta_shared + (X @ beta_fg) * groups
                     mse = np.mean((y - preds) ** 2)
                     return mse
-                elif self.model == 'classification':
+                elif self.model == "classification":
                     # Reshape from flattened vector
                     x = np.reshape(x, [2 * p + 2, self.num_classes])
-                    beta_shared, beta_fg = x[:p+1, :], x[p + 1:, :]
-                    
+                    beta_shared, beta_fg = x[: p + 1, :], x[p + 1 :, :]
+
                     # Linear function
                     preds = X @ beta_shared + (X @ beta_fg) * np.expand_dims(groups, 1)
 
@@ -57,11 +59,10 @@ class LMM():
                 else:
                     raise Exception("Model must be either regression or classification")
 
-
             # Initial value of x
             # (need 2 times the params to account for both groups)
             # (separate row of params for each class)
-            if self.model == 'classification':
+            if self.model == "classification":
                 x0 = np.random.normal(size=(2 * p + 2, self.num_classes))
                 # Need to flatten for optimizer
                 x0 = np.ndarray.flatten(x0)
@@ -69,17 +70,17 @@ class LMM():
                 x0 = np.random.normal(size=2 * p + 2)
 
             # Try with BFGS
-            xopt = optimize.minimize(f, x0, method='bfgs', options={'disp': verbose})
+            xopt = optimize.minimize(f, x0, method="bfgs", options={"disp": verbose})
 
-            if self.model == 'classification':
+            if self.model == "classification":
                 # Reshape from flattened vector
                 # import ipdb; ipdb.set_trace()
                 xstar = np.reshape(xopt.x, [2 * p + 2, self.num_classes])
-                self.coefs_shared = xstar[:p + 1, :]
-                self.coefs_fg = xstar[p + 1:, :]
-            elif self.model == 'regression':
-                self.coefs_shared = xopt.x[:p + 1]
-                self.coefs_fg = xopt.x[p + 1:]
+                self.coefs_shared = xstar[: p + 1, :]
+                self.coefs_fg = xstar[p + 1 :, :]
+            elif self.model == "regression":
+                self.coefs_shared = xopt.x[: p + 1]
+                self.coefs_fg = xopt.x[p + 1 :]
 
         # Not implemented for 12 dimensions
         elif method == "project":
@@ -112,13 +113,15 @@ class LMM():
         # Add columns of ones for intercept
         n = X.shape[0]
         X = np.hstack([np.ones((n, 1)), X])
-        
-        if self.model == 'regression':
+
+        if self.model == "regression":
             # only need linear part
             preds = X @ self.coefs_shared + (X @ self.coefs_fg) * groups
 
-        elif self.model == 'classification':
-            preds = X @ self.coefs_shared + (X @ self.coefs_fg) * np.expand_dims(groups, 1)
+        elif self.model == "classification":
+            preds = X @ self.coefs_shared + (X @ self.coefs_fg) * np.expand_dims(
+                groups, 1
+            )
             preds = np.argmax(preds, axis=1)
             if self.is_pendulum:
                 preds -= 2
@@ -128,5 +131,3 @@ class LMM():
 
 if __name__ == "__main__":
     pass
-
-

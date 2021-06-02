@@ -23,20 +23,20 @@ class CartPoleRegulatorEnv(gym.Env):
         A pole is attached by an un-actuated joint to a cart, which moves along a frictionless track. The pendulum starts upright, and the goal is to prevent it from falling over by increasing and reducing the cart's velocity.
     Source:
         This environment corresponds to the version of the cart-pole problem described by Barto, Sutton, and Anderson
-    Observation: 
+    Observation:
         Type: Box(4)
         Num Observation                 Min         Max
         0   Cart Position             -4.8            4.8
         1   Cart Velocity             -Inf            Inf
         2   Pole Angle                 -24 deg        24 deg
         3   Pole Velocity At Tip      -Inf            Inf
-        
+
     Actions:
         Type: Discrete(2)
         Num Action
         0   Push cart to the left
         1   Push cart to the right
-        
+
         Note: The amount the velocity that is reduced or increased is not fixed; it depends on the angle the pole is pointing. This is because the center of gravity of the pole increases the amount of energy needed to move the cart underneath it
     Reward:
         Reward is 1 for every step taken, including the termination step
@@ -52,7 +52,17 @@ class CartPoleRegulatorEnv(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
 
-    def __init__(self, mode="train", masscart=1.0, masspole=0.1, length=0.5, force_left=0.0, is_contrastive=True, group=1, fg_only=False):
+    def __init__(
+        self,
+        mode="train",
+        masscart=1.0,
+        masspole=0.1,
+        length=0.5,
+        force_left=0.0,
+        is_contrastive=True,
+        group=1,
+        fg_only=False,
+    ):
         self.gravity = 9.8
         self.masscart = masscart
         self.masspole = 0.1
@@ -120,7 +130,7 @@ class CartPoleRegulatorEnv(gym.Env):
 
         if self.group == 1 or self.fg_only:
             force -= self.force_left
-        
+
         costheta = math.cos(theta)
         sintheta = math.sin(theta)
         temp = (
@@ -207,6 +217,7 @@ class CartPoleRegulatorEnv(gym.Env):
         self.episode_step = 0
 
         return np.array(self.state)
+
     # def reset(self):
     #     if self.mode == "train":
     #         self.state = self.np_random.uniform(
@@ -221,7 +232,7 @@ class CartPoleRegulatorEnv(gym.Env):
 
     #     return np.array(self.state)
 
-    def render(self, mode="rgb_array"): #mode="human"):
+    def render(self, mode="rgb_array"):  # mode="human"):
         screen_width = 600
         screen_height = 400
 
@@ -298,6 +309,7 @@ class CartPoleRegulatorEnv(gym.Env):
     def create_gif(self):
 
         from os.path import join as pjoin
+
         fig = plt.figure()
         ims = []
         img_dir = "./tmp"
@@ -312,9 +324,9 @@ class CartPoleRegulatorEnv(gym.Env):
             ims.append([im])
             os.remove(fname)
 
-
-
-        ani = animation.ArtistAnimation(fig, ims, interval=1, blit=True, repeat_delay=500)
+        ani = animation.ArtistAnimation(
+            fig, ims, interval=1, blit=True, repeat_delay=500
+        )
 
         gif_suffix = "_bg" if self.group == 0 else "_fg"
         if self.is_contrastive:
@@ -322,7 +334,7 @@ class CartPoleRegulatorEnv(gym.Env):
         else:
             gif_suffix += "_nfqi"
         gif_fname = "./cartpole{}.gif".format(gif_suffix)
-        ani.save(gif_fname, writer='imagemagick')
+        ani.save(gif_fname, writer="imagemagick")
 
         import imageio
 
@@ -405,5 +417,3 @@ class CartPoleRegulatorEnv(gym.Env):
                 self.render()
 
         return rollout, episode_cost
-
-

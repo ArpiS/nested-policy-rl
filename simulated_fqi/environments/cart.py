@@ -19,18 +19,18 @@ class CartEnv(gym.Env):
         A pole is attached by an un-actuated joint to a cart, which moves along a frictionless track. The pendulum starts upright, and the goal is to prevent it from falling over by increasing and reducing the cart's velocity.
     Source:
         This environment corresponds to the version of the cart-pole problem described by Barto, Sutton, and Anderson
-    Observation: 
+    Observation:
         Type: Box(4)
         Num Observation                 Min         Max
         0   Cart Position             -4.8            4.8
         1   Cart Velocity             -Inf            Inf
-        
+
     Actions:
         Type: Discrete(2)
         Num Action
         0   Push cart to the left
         1   Push cart to the right
-        
+
         Note: The amount the velocity that is reduced or increased is not fixed; it depends on the angle the pole is pointing. This is because the center of gravity of the pole increases the amount of energy needed to move the cart underneath it
     Reward:
         Reward is 1 for every step taken, including the termination step
@@ -70,7 +70,7 @@ class CartEnv(gym.Env):
         # NOTE(seungjaeryanlee): Relaxed definition of success state
         #                        that deviates from paper
         self.x_success_range = 1.0
-        #self.theta_success_range = 12 * 2 * math.pi / 30
+        # self.theta_success_range = 12 * 2 * math.pi / 30
 
         # Failure state description
         # TODO(seungjaeryanlee): Verify pole angle threshold
@@ -80,12 +80,7 @@ class CartEnv(gym.Env):
         self.c_trans = 0.01
 
         # Angle limit set to 2 * theta_threshold_radians so failing observation is still within bounds
-        high = np.array(
-            [
-                self.x_threshold * 2,
-                np.finfo(np.float32).max
-            ]
-        )
+        high = np.array([self.x_threshold * 2, np.finfo(np.float32).max])
 
         self.action_space = spaces.Discrete(2)
         self.observation_space = spaces.Box(-high, high, dtype=np.float32)
@@ -142,7 +137,9 @@ class CartEnv(gym.Env):
             cost = 1
         # Goal States (S+)
         elif (
-            -self.x_success_range < x < self.x_success_range
+            -self.x_success_range
+            < x
+            < self.x_success_range
             # and -self.theta_success_range < theta < self.theta_success_range
         ):
             done = False
@@ -153,8 +150,10 @@ class CartEnv(gym.Env):
             cost = self.c_trans
 
         # Check for time limit
-        info = {"time_limit": self.episode_step >= self.max_steps,
-                "long_hold": self.success_step >= self.max_steps}
+        info = {
+            "time_limit": self.episode_step >= self.max_steps,
+            "long_hold": self.success_step >= self.max_steps,
+        }
         # if self.success_step > 2000:
         #     done = True
 
@@ -173,7 +172,9 @@ class CartEnv(gym.Env):
             #     low=[-1, 0, 0, 0], high=[1, 0, 0, 0], size=(4,)
             # )
             self.state = self.np_random.uniform(
-                low=[-self.x_success_range, 0], high=[self.x_success_range, 0], size=(2,)
+                low=[-self.x_success_range, 0],
+                high=[self.x_success_range, 0],
+                size=(2,),
             )
         # self.state = self.np_random.uniform(
         #         low=[-0.5, 0, 0, 0], high=[0.5, 0, 0, 0], size=(4,)
@@ -183,6 +184,7 @@ class CartEnv(gym.Env):
         self.success_step = 0
 
         return np.array(self.state)
+
     # def reset(self):
     #     if self.mode == "train":
     #         self.state = self.np_random.uniform(
@@ -237,7 +239,6 @@ class CartEnv(gym.Env):
             self.track = rendering.Line((0, carty), (screen_width, carty))
             self.track.set_color(0, 0, 0)
             self.viewer.add_geom(self.track)
-
 
             lb = screen_width // 2 - self.x_success_range * scale
             rb = screen_width // 2 + self.x_success_range * scale
@@ -316,5 +317,3 @@ class CartEnv(gym.Env):
                 self.render()
 
         return rollout, episode_cost
-
-

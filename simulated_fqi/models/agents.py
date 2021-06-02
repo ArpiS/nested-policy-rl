@@ -38,21 +38,33 @@ class NFQAgent:
         """
         q_list = np.zeros(len(unique_actions))
         for ii, a in enumerate(unique_actions):
-            
 
             if self._nfq_net.is_contrastive:
                 if group == 0:
-                    x = self._nfq_net.layers_shared(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
+                    x = self._nfq_net.layers_shared(
+                        torch.cat(
+                            [torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0
+                        )
+                    )
                     q_list[ii] = self._nfq_net.layers_last_shared(x)
                 else:
-                    x_shared = self._nfq_net.layers_shared(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
-                    x_fg = self._nfq_net.layers_fg(torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0))
+                    x_shared = self._nfq_net.layers_shared(
+                        torch.cat(
+                            [torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0
+                        )
+                    )
+                    x_fg = self._nfq_net.layers_fg(
+                        torch.cat(
+                            [torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0
+                        )
+                    )
                     x_shared = self._nfq_net.layers_last_shared(x_shared)
                     x_fg = self._nfq_net.layers_last_fg(x_fg)
                     q_list[ii] = x_shared + x_fg
             else:
                 q_list[ii] = self._nfq_net(
-                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0), group * torch.ones(1)
+                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0),
+                    group * torch.ones(1),
                 )
 
         # plt.plot(q_list)
@@ -181,14 +193,12 @@ class NFQAgent:
             if render:
                 eval_env.render()
 
-
         success = (
             episode_length == eval_env.max_steps
             and abs(obs[0]) <= eval_env.x_success_range
         )
 
         return episode_length, success, episode_cost
-
 
     def evaluate_cart(self, eval_env: gym.Env, render: bool) -> Tuple[int, str, float]:
         """Evaluate NFQ agent on evaluation environment.
@@ -222,7 +232,6 @@ class NFQAgent:
             if render:
                 eval_env.render()
 
-
         success = (
             success_length == eval_env.max_steps
             and abs(obs[0]) <= eval_env.x_success_range
@@ -230,7 +239,9 @@ class NFQAgent:
 
         return success_length, success, episode_cost
 
-    def evaluate_pendulum(self, eval_env: gym.Env, num_steps: int = 100, render: bool = False) -> Tuple[int, str, float]:
+    def evaluate_pendulum(
+        self, eval_env: gym.Env, num_steps: int = 100, render: bool = False
+    ) -> Tuple[int, str, float]:
         episode_length = 0
         obs = eval_env.reset()
         done = False
@@ -245,8 +256,6 @@ class NFQAgent:
             if render:
                 eval_env.render()
 
-        success = (
-            episode_cost / num_steps * 1.0 == -1
-        )
+        success = episode_cost / num_steps * 1.0 == -1
 
         return episode_length, success, episode_cost

@@ -37,4 +37,3 @@ class NFQNetwork(nn.Module):
             Forward-propagated observation predicting Q-value.
         """
         return self.layers(x)
-        

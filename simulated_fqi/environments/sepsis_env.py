@@ -22,39 +22,91 @@ am_dir = "/Users/aishwaryamandyam/Documents/Research/BEE/contrastive-rl/contrast
 aj_dir = "./sepsis_model"
 
 
-features = ['ALBUMIN', 'ANION GAP', 'BANDS', 'BICARBONATE',
-            'BILIRUBIN', 'BUN', 'CHLORIDE', 'CREATININE', 'DiasBP', 'Glucose',
-            'GLUCOSE', 'HeartRate', 'HEMATOCRIT', 'HEMOGLOBIN', 'INR', 'LACTATE',
-            'MeanBP', 'PaCO2', 'PLATELET', 'POTASSIUM', 'PT', 'PTT', 'RespRate',
-            'SODIUM', 'SpO2', 'SysBP', 'TempC', 'WBC', 'age', 'is_male',
-            'race_white', 'race_black', 'race_hispanic', 'race_other', 'height',
-            'weight', 'vent', 'sofa', 'lods', 'sirs', 'qsofa', 'qsofa_sysbp_score',
-            'qsofa_gcs_score', 'qsofa_resprate_score', 'elixhauser_hospital',
-            'blood_culture_positive', 'action', 'state_idx']
+features = [
+    "ALBUMIN",
+    "ANION GAP",
+    "BANDS",
+    "BICARBONATE",
+    "BILIRUBIN",
+    "BUN",
+    "CHLORIDE",
+    "CREATININE",
+    "DiasBP",
+    "Glucose",
+    "GLUCOSE",
+    "HeartRate",
+    "HEMATOCRIT",
+    "HEMOGLOBIN",
+    "INR",
+    "LACTATE",
+    "MeanBP",
+    "PaCO2",
+    "PLATELET",
+    "POTASSIUM",
+    "PT",
+    "PTT",
+    "RespRate",
+    "SODIUM",
+    "SpO2",
+    "SysBP",
+    "TempC",
+    "WBC",
+    "age",
+    "is_male",
+    "race_white",
+    "race_black",
+    "race_hispanic",
+    "race_other",
+    "height",
+    "weight",
+    "vent",
+    "sofa",
+    "lods",
+    "sirs",
+    "qsofa",
+    "qsofa_sysbp_score",
+    "qsofa_gcs_score",
+    "qsofa_resprate_score",
+    "elixhauser_hospital",
+    "blood_culture_positive",
+    "action",
+    "state_idx",
+]
+
 
 class SepsisEnv(gym.Env):
     """
     Built from trained models on top of the MIMIC dataset, this
     Environment simulates the behavior of the Sepsis patient
     in response to medical interventions.
-    For details see: https://github.com/akiani/gym-sepsis 
+    For details see: https://github.com/akiani/gym-sepsis
     """
-    metadata = {'render.modes': ['ansi']}
+
+    metadata = {"render.modes": ["ansi"]}
 
     def __init__(self, starting_state=None, verbose=False):
         # module_path = os.path.dirname(__file__)
         module_path = am_dir
         self.verbose = verbose
-        self.state_model = keras.models.load_model(os.path.join(module_path, STATE_MODEL))
-        self.termination_model = keras.models.load_model(os.path.join(module_path, TERMINATION_MODEL))
-        self.outcome_model = keras.models.load_model(os.path.join(module_path, OUTCOME_MODEL))
-        self.starting_states = np.load(os.path.join(module_path, STARTING_STATES_VALUES))['sepsis_starting_states']
+        self.state_model = keras.models.load_model(
+            os.path.join(module_path, STATE_MODEL)
+        )
+        self.termination_model = keras.models.load_model(
+            os.path.join(module_path, TERMINATION_MODEL)
+        )
+        self.outcome_model = keras.models.load_model(
+            os.path.join(module_path, OUTCOME_MODEL)
+        )
+        self.starting_states = np.load(
+            os.path.join(module_path, STARTING_STATES_VALUES)
+        )["sepsis_starting_states"]
         self.seed()
         self.action_space = spaces.Discrete(24)
 
         # use a pixel to represent next state
-        self.observation_space = spaces.Box(low=0, high=NUM_ACTIONS, shape=(NUM_FEATURES-2, 1, 1),
-                                            dtype=np.float32)
+        self.observation_space = spaces.Box(
+            low=0, high=NUM_ACTIONS, shape=(NUM_FEATURES - 2, 1, 1), dtype=np.float32
+        )
         self.reset(starting_state=starting_state)
         self.features = features
 
@@ -64,7 +116,11 @@ class SepsisEnv(gym.Env):
 
     def step(self, action):
         # create memory of present
-        self.memory.append(np.append(np.append(self.s.reshape((1, NUM_FEATURES - 2)), action), self.state_idx))
+        self.memory.append(
+            np.append(
+                np.append(self.s.reshape((1, NUM_FEATURES - 2)), action), self.state_idx
+            )
+        )
         if self.verbose:
             print("running on memory: ", self.memory)
 
@@ -72,8 +128,15 @@ class SepsisEnv(gym.Env):
         next_state = self.state_model.predict(memory_array[:, :, :-1])
 
         # overwrite constant variables (these should't change during episode)
-        constants = ['age', 'race_white', 'race_black', 'race_hispanic',
-                     'race_other', 'height', 'weight']
+        constants = [
+            "age",
+            "race_white",
+            "race_black",
+            "race_hispanic",
+            "race_other",
+            "height",
+            "weight",
+        ]
         for constant in constants:
             idx = features.index(constant)
             val = self.state_0[idx]
@@ -82,8 +145,8 @@ class SepsisEnv(gym.Env):
         termination = self.termination_model.predict(memory_array)
         outcome = self.outcome_model.predict(memory_array)
 
-        termination_categories = ['continue', 'done']
-        outcome_categories = ['death', 'release']
+        termination_categories = ["continue", "done"]
+        outcome_categories = ["death", "release"]
 
         termination_state = termination_categories[np.argmax(termination)]
         outcome_state = outcome_categories[np.argmax(outcome)]
@@ -91,9 +154,9 @@ class SepsisEnv(gym.Env):
         reward = 1 + randrange(4)
         done = False
 
-        if termination_state == 'done':
+        if termination_state == "done":
             done = True
-            if outcome_state == 'death':
+            if outcome_state == "death":
                 reward = -15
             else:
                 reward = 15
@@ -103,7 +166,7 @@ class SepsisEnv(gym.Env):
         self.state_idx += 1
         self.rewards.append(reward)
         self.dones.append(done)
-        return self.s, reward, done, {"prob" : 1}
+        return self.s, reward, done, {"prob": 1}
 
     def reset(self, starting_state=None):
         self.rewards = []
@@ -111,7 +174,9 @@ class SepsisEnv(gym.Env):
         self.state_idx = 0
         self.memory = deque([np.zeros(shape=[NUM_FEATURES])] * 10, maxlen=10)
         if starting_state is None:
-            self.s = self.starting_states[np.random.randint(0, len(self.starting_states))][:-1]
+            self.s = self.starting_states[
+                np.random.randint(0, len(self.starting_states))
+            ][:-1]
         else:
             self.s = starting_state
 
@@ -126,7 +191,7 @@ class SepsisEnv(gym.Env):
         seed = seeding.np_random(seed)
         return [seed]
 
-    def render(self, mode='ansi', verbose=False):
+    def render(self, mode="ansi", verbose=False):
         df = pd.DataFrame(self.memory, columns=features, index=range(0, 10))
         if verbose:
             print(df)
@@ -152,7 +217,7 @@ class SepsisEnv(gym.Env):
             # Save initial action
             s_init = np.squeeze(self.s)
             states.append(s_init)
-            
+
             # Step until "done" flag becomes True (patient is released or dies)
             done = False
             while not done:
@@ -163,7 +228,7 @@ class SepsisEnv(gym.Env):
                 # Take action
                 s, r, done, prob = self.step(a)
                 s = np.squeeze(s)
-                
+
                 # Get current state
                 df = self.render()
 
@@ -176,13 +241,13 @@ class SepsisEnv(gym.Env):
             actions = np.array(actions)
             states = np.vstack(states)
             n_iter = len(rewards)
-            
+
             ## Form tuples
             for ii in range(1, n_iter):
 
                 s = states[ii, :]
                 a = actions[ii]
-                ns = states[ii+1, :]
+                ns = states[ii + 1, :]
                 r = rewards[ii]
 
                 # Tuples are (state, action, next state, reward, group, index)
@@ -190,4 +255,3 @@ class SepsisEnv(gym.Env):
                 tuples.append(curr_tuple)
 
         return tuples
-

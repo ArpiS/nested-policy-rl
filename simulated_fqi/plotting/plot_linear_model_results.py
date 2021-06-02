@@ -5,14 +5,15 @@ import scipy
 import numpy as np
 import pandas as pd
 import matplotlib
+
 font = {"size": 20}
 matplotlib.rc("font", **font)
 # matplotlib.rcParams["text.usetex"] = True
 
 ##### Class imbalance
 
-with open('../linear_model_comparison.json') as f:
-  results = json.load(f)
+with open("../linear_model_comparison.json") as f:
+    results = json.load(f)
 
 results_df = pd.DataFrame(results)
 results_df = pd.melt(results_df)
@@ -26,6 +27,6 @@ plt.title(r"Approximation functions $f$")
 plt.tight_layout()
 plt.savefig("../plots/linear_model_comparison.png")
 plt.show()
-import ipdb; ipdb.set_trace()
+import ipdb
 
-
+ipdb.set_trace()

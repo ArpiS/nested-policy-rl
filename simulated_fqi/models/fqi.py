@@ -14,24 +14,39 @@ import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
 import sys
+
 sys.path.append("../environments")
 from cartpole_regulator import CartPoleRegulatorEnv
 
-class FQIagent():
-    def __init__(self, train_tuples, test_tuples, iters=150, gamma=0.99, batch_size=100, prioritize=False, estimator='gbm',
-                 weights=np.array([1, 1, 1, 1, 1])/5., maxT=36, state_dim=10):
-        
+
+class FQIagent:
+    def __init__(
+        self,
+        train_tuples,
+        test_tuples,
+        iters=150,
+        gamma=0.99,
+        batch_size=100,
+        prioritize=False,
+        estimator="gbm",
+        weights=np.array([1, 1, 1, 1, 1]) / 5.0,
+        maxT=36,
+        state_dim=10,
+    ):
+
         self.iters = iters
         self.gamma = gamma
         self.batch_size = batch_size
         self.state_dim = state_dim
         self.prioritize_a = prioritize
-        self.training_set, self.test_set = util_fqi.construct_dicts(train_tuples, test_tuples)
+        self.training_set, self.test_set = util_fqi.construct_dicts(
+            train_tuples, test_tuples
+        )
         self.raw_test = test_tuples
-        
-        self.visits = {'train': len(train_tuples), 'test': len(test_tuples)}
-        self.NV = {'train': len(train_tuples), 'test': len(test_tuples)}
-        self.n_samples = len(self.training_set['s'])
+
+        self.visits = {"train": len(train_tuples), "test": len(test_tuples)}
+        self.NV = {"train": len(train_tuples), "test": len(test_tuples)}
+        self.n_samples = len(self.training_set["s"])
         _, self.unique_actions, self.action_counts, _ = self.sub_actions()
         self.state_feats = [str(x) for x in range(10)]
         self.n_features = len(self.state_feats)
@@ -40,37 +55,42 @@ class FQIagent():
         # self.piB = util_fqi.learnBehaviour(self.training_set, self.test_set, state_dim=state_dim)
         self.n_actions = len(self.unique_actions)
         print("N actions: ", self.n_actions)
-        
-        if estimator == 'tree':
-            self.q_est = ExtraTreesRegressor(n_estimators=50, max_depth=None, min_samples_leaf=10, min_samples_split=2,
-                                             random_state=0)
-        elif estimator == 'gbm':
+
+        if estimator == "tree":
+            self.q_est = ExtraTreesRegressor(
+                n_estimators=50,
+                max_depth=None,
+                min_samples_leaf=10,
+                min_samples_split=2,
+                random_state=0,
+            )
+        elif estimator == "gbm":
             self.q_est = LGBMRegressor(n_estimators=50, silent=True)
 
-        elif estimator == 'nn':
+        elif estimator == "nn":
             self.q_est = None
-        
-        elif estimator == 'lin':
+
+        elif estimator == "lin":
             self.q_est = LinearRegression()
-            
-        self.piE = LogisticRegression() #LinearRegression()
+
+        self.piE = LogisticRegression()  # LinearRegression()
 
     def sub_actions(self):
-        
-        a = self.training_set['a']
+
+        a = self.training_set["a"]
         a = list(a)
-        
+
         unique_actions = 0
         action_counts = 0
         n_actions = 0
-        
+
         unique_actions, action_counts = np.unique(a, axis=0, return_counts=True)
         n_actions = len(unique_actions)
-                
+
         return a, unique_actions, action_counts, n_actions
-    
+
     def sampleTuples(self):
-        
+
         # # Get a batch of unprioritized samples:
         #
         # ids = list(np.random.choice(np.arange(self.n_samples), self.batch_size, replace=False))
@@ -83,51 +103,59 @@ class FQIagent():
         #
         #
         # return batch
-        ids = list(np.random.choice(np.arange(self.n_samples), self.batch_size, replace=False))
+        ids = list(
+            np.random.choice(np.arange(self.n_samples), self.batch_size, replace=False)
+        )
         batch = {}
         for k in self.training_set.keys():
             batch[k] = np.asarray(self.training_set[k], dtype=object)[ids]
-        batch['r'] = batch['r']  # np.dot(batch['r'], self.reward_weights)
+        batch["r"] = batch["r"]  # np.dot(batch['r'], self.reward_weights)
 
-        batch['s_ids'] = np.asarray(ids, dtype=int)
-        batch['ns_ids'] = np.asarray(ids, dtype=int) + 1
+        batch["s_ids"] = np.asarray(ids, dtype=int)
+        batch["ns_ids"] = np.asarray(ids, dtype=int) + 1
 
         return batch
-    
+
     def fitQ(self, batch, Q):
-        
+
         # input = [state action]
-        x =  np.hstack((np.asarray(batch['s']), np.expand_dims(np.asarray(batch['a']), 1)))
+        x = np.hstack(
+            (np.asarray(batch["s"]), np.expand_dims(np.asarray(batch["a"]), 1))
+        )
 
         # target = r + gamma * max_a(Q(s', a))      == r for first iteration
-        y = np.squeeze(batch['r']) + (self.gamma * np.max(Q[batch['ns_ids'], :], axis=1))
+        y = np.squeeze(batch["r"]) + (
+            self.gamma * np.max(Q[batch["ns_ids"], :], axis=1)
+        )
 
         self.q_est.fit(x, y)
-    
+
     def updateQtable(self, Qtable, batch):
-        
+
         for i, a in enumerate(self.unique_actions):
-            Qtable[batch['s_ids'], i] = self.q_est.predict(np.hstack((batch['ns'], np.tile(a, (self.batch_size,1)))))
+            Qtable[batch["s_ids"], i] = self.q_est.predict(
+                np.hstack((batch["ns"], np.tile(a, (self.batch_size, 1))))
+            )
         return Qtable
-    
+
     def runFQI(self, repeats=10):
-        
-        print('Learning policy')
+
+        print("Learning policy")
         meanQtable = np.zeros((self.n_samples + 1, self.n_actions))
-        
+
         for r in range(repeats):
-            print('Run', r, ':')
-            print('Initialize: get batch, set initial Q')
+            print("Run", r, ":")
+            print("Initialize: get batch, set initial Q")
             Qtable = np.zeros((self.n_samples + 1, self.n_actions))
             Qdist = []
 
-            #print('Run FQI')
+            # print('Run FQI')
             for iteration in range(self.iters):
 
                 # copy q-table
                 Qold = cp.deepcopy(Qtable)
 
-                # sample batch  
+                # sample batch
                 batch = self.sampleTuples()
 
                 # learn q_est with samples, targets from batch
@@ -138,25 +166,24 @@ class FQIagent():
 
                 # check divergence from last estimate
                 Qdist.append(mean_absolute_error(Qold, Qtable))
-         
+
             meanQtable += Qtable
-            
-        
+
         meanQtable = meanQtable / repeats
 
         self.Qtable = meanQtable
-        print('Learn policy')
+        print("Learn policy")
         self.getPi(meanQtable)
         return Qdist
 
     def sampleTuplesTorch(self):
         tuples = self.sampleTuples()
-        
-        state_b = tuples['s'].astype("float")
-        action_b = tuples['a'].astype("float")
-        cost_b = tuples['r'].astype("float")
-        next_state_b = tuples['ns'].astype("float")
-        n_steps = len(tuples['a'])
+
+        state_b = tuples["s"].astype("float")
+        action_b = tuples["a"].astype("float")
+        cost_b = tuples["r"].astype("float")
+        next_state_b = tuples["ns"].astype("float")
+        n_steps = len(tuples["a"])
         # , cost_b, next_state_b, done_b = zip(*tuples)
         # import ipdb; ipdb.set_trace()
         state_b = torch.FloatTensor(state_b)
@@ -177,7 +204,6 @@ class FQIagent():
             torch.cat([next_state_b, torch.ones(n_steps, 1)], 1)
         ).squeeze()
         q_next_state_b = torch.min(q_next_state_left_b, q_next_state_right_b)
-        
 
         # If goal state (S+): target = 0 + gamma * min Q
         # If forbidden state (S-): target = 1
@@ -186,7 +212,9 @@ class FQIagent():
         #                        due to entering forbidden state. It is not
         #                        True if it terminated due to maximum timestep.
         with torch.no_grad():
-            target_q_values = cost_b.squeeze() + self.gamma * q_next_state_b #* (1 - done_b)
+            target_q_values = (
+                cost_b.squeeze() + self.gamma * q_next_state_b
+            )  # * (1 - done_b)
         # import ipdb; ipdb.set_trace()
 
         return state_action_b, target_q_values
@@ -217,14 +245,13 @@ class FQIagent():
         return state_action_b, target_q_values
 
     def runNFQI(self):
-
         class NFQNetwork(nn.Module):
             def __init__(self, state_dim):
                 """Networks for NFQ."""
                 super().__init__()
 
                 self.layers = nn.Sequential(
-                    nn.Linear(state_dim+1, 5),
+                    nn.Linear(state_dim + 1, 5),
                     nn.Sigmoid(),
                     nn.Linear(5, 5),
                     nn.Sigmoid(),
@@ -246,14 +273,11 @@ class FQIagent():
         self._nfq_net = nfq_net
         self.optimizer = optim.Rprop(nfq_net.parameters())
 
-        
         train_env = CartPoleRegulatorEnv()
 
         all_rollouts = []
         for _ in range(200):
-            rollout, episode_cost = train_env.generate_rollout(
-                None, render=False
-            )
+            rollout, episode_cost = train_env.generate_rollout(None, render=False)
             all_rollouts.extend(rollout)
 
         loss_trace = []
@@ -267,7 +291,9 @@ class FQIagent():
             loss_trace.append(curr_loss)
 
             episode_length, success, episode_cost = self.evaluateNFQI()
-            print("Loss: {}, Eval length: {}".format(round(curr_loss, 3), episode_length))
+            print(
+                "Loss: {}, Eval length: {}".format(round(curr_loss, 3), episode_length)
+            )
 
         plt.plot(loss_trace)
         plt.show()
@@ -317,13 +343,14 @@ class FQIagent():
         )
 
         return episode_length, success, episode_cost
-        
 
     def getPi(self, Qtable):
-        unique_counts = (Qtable[:,1:] != Qtable[:,:-1]).sum(axis=1)+1
+        unique_counts = (Qtable[:, 1:] != Qtable[:, :-1]).sum(axis=1) + 1
         uniform_rows = np.where(unique_counts == 1)[0]
         optA = np.argmax(Qtable, axis=1)
-        optA[uniform_rows] = np.random.choice([0, 1], size=len(uniform_rows), replace=True)
+        optA[uniform_rows] = np.random.choice(
+            [0, 1], size=len(uniform_rows), replace=True
+        )
 
         if self.state_dim == 3:
             rescaled_optA = []
@@ -332,7 +359,5 @@ class FQIagent():
 
             optA = np.asarray(rescaled_optA)
         self.optA = optA[:-1]
-        self.piE.fit(self.training_set['s'], optA[:-1])
-        print("Fit score: ", self.piE.score(self.training_set['s'], optA[:-1]))
-
-
+        self.piE.fit(self.training_set["s"], optA[:-1])
+        print("Fit score: ", self.piE.score(self.training_set["s"], optA[:-1]))

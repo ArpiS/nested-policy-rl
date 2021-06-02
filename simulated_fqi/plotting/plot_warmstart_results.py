@@ -40,18 +40,19 @@ import matplotlib
 # plt.show()
 
 
-
-
-with open('../warm_start_forcerange.json') as f:
-  results = json.load(f)
+with open("../warm_start_forcerange.json") as f:
+    results = json.load(f)
 # import ipdb; ipdb.set_trace()
 
+
 def mean_confidence_interval(data, confidence=0.95):
-	a = 1.0 * np.array(data)
-	n = len(a)
-	m, se = np.mean(a), scipy.stats.sem(a)
-	h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
-	return m, h
+    a = 1.0 * np.array(data)
+    n = len(a)
+    m, se = np.mean(a), scipy.stats.sem(a)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2.0, n - 1)
+    return m, h
+
+
 c_success = []
 f_success = []
 w_success = []
@@ -59,35 +60,37 @@ c_errs = []
 f_errs = []
 w_errs = []
 for i in range(11):
-	i = str(i)
-	cfqi_perf = []
-	fqi_perf = []
-	ws_perf = []
-	for key in results[i]['fqi']:
-		fqi_perf.extend(results[i]['fqi'][key])
-	for key in results[i]['cfqi']:
-		cfqi_perf.extend(results[i]['cfqi'][key])
-	for key in results[i]['warm_start']:
-		ws_perf.extend(results[i]['warm_start'][key])
-	c_success.append(np.mean(cfqi_perf))
-	f_success.append(np.mean(fqi_perf))
-	w_success.append(np.mean(ws_perf))
-	m, h = mean_confidence_interval(cfqi_perf)
-	c_errs.append(h)
-	m, h = mean_confidence_interval(fqi_perf)
-	f_errs.append(h)
-	m, h = mean_confidence_interval(ws_perf)
-	w_errs.append(h) 
+    i = str(i)
+    cfqi_perf = []
+    fqi_perf = []
+    ws_perf = []
+    for key in results[i]["fqi"]:
+        fqi_perf.extend(results[i]["fqi"][key])
+    for key in results[i]["cfqi"]:
+        cfqi_perf.extend(results[i]["cfqi"][key])
+    for key in results[i]["warm_start"]:
+        ws_perf.extend(results[i]["warm_start"][key])
+    c_success.append(np.mean(cfqi_perf))
+    f_success.append(np.mean(fqi_perf))
+    w_success.append(np.mean(ws_perf))
+    m, h = mean_confidence_interval(cfqi_perf)
+    c_errs.append(h)
+    m, h = mean_confidence_interval(fqi_perf)
+    f_errs.append(h)
+    m, h = mean_confidence_interval(ws_perf)
+    w_errs.append(h)
 x = [k for k in range(11)]
 # sns.scatterplot(x, c_success, label='CFQI')
-plt.errorbar(x, c_success, yerr=c_errs, label='CFQI') #, linestyle="None")
+plt.errorbar(x, c_success, yerr=c_errs, label="CFQI")  # , linestyle="None")
 # sns.scatterplot(x, f_success, label='FQI')
-plt.errorbar(x, f_success, yerr=f_errs, label='FQI') #, linestyle="None")
+plt.errorbar(x, f_success, yerr=f_errs, label="FQI")  # , linestyle="None")
 # sns.scatterplot(x, w_success, label='Warm Start')
-plt.errorbar(x, w_success, yerr=w_errs, label='Warm Start') #, linestyle="None")
+plt.errorbar(x, w_success, yerr=w_errs, label="Warm Start")  # , linestyle="None")
 plt.legend()
 plt.title("Performance of CFQI, FQI, Warm Start when force on cart is modified")
 plt.xlabel("Force Left")
 plt.ylabel("Steps Survived")
-plt.show()  
-import ipdb; ipdb.set_trace()
+plt.show()
+import ipdb
+
+ipdb.set_trace()

@@ -5,10 +5,10 @@ import scipy
 import numpy as np
 import pandas as pd
 import matplotlib
+
 font = {"size": 20}
 matplotlib.rc("font", **font)
 # matplotlib.rcParams["text.usetex"] = True
-
 
 
 # #### Force=0
@@ -46,17 +46,19 @@ matplotlib.rc("font", **font)
 # plt.show()
 
 
-with open('../force_left_v_performance.json') as f:
-  results = json.load(f)
+with open("../force_left_v_performance.json") as f:
+    results = json.load(f)
 
 
 def mean_confidence_interval(data, confidence=0.95):
     a = 1.0 * np.array(data)
     n = len(a)
     m, se = np.mean(a), scipy.stats.sem(a)
-    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
+    h = se * scipy.stats.t.ppf((1 + confidence) / 2.0, n - 1)
     return m, h
-def plot_performance(results, ds='bg', figname=""):
+
+
+def plot_performance(results, ds="bg", figname=""):
     c_success = []
     f_success = []
     w_success = []
@@ -65,7 +67,7 @@ def plot_performance(results, ds='bg', figname=""):
     f_errs = []
     w_errs = []
     t_errs = []
-    if ds == 'bg':
+    if ds == "bg":
         ind = 1
     else:
         ind = 0
@@ -74,14 +76,14 @@ def plot_performance(results, ds='bg', figname=""):
         fqi_perf = []
         ws_perf = []
         tl_perf = []
-        for key in results[str(i)]['fqi']:
-            fqi_perf.extend(results[str(i)]['fqi'][key][ind])
-        for key in results[str(i)]['cfqi']:
-            cfqi_perf.extend(results[str(i)]['cfqi'][key][ind])
-        for key in results[str(i)]['warm_start']:
-            ws_perf.extend(results[str(i)]['warm_start'][key][ind])
-        for key in results[str(i)]['tl']:
-            tl_perf.extend(results[str(i)]['tl'][key][ind])
+        for key in results[str(i)]["fqi"]:
+            fqi_perf.extend(results[str(i)]["fqi"][key][ind])
+        for key in results[str(i)]["cfqi"]:
+            cfqi_perf.extend(results[str(i)]["cfqi"][key][ind])
+        for key in results[str(i)]["warm_start"]:
+            ws_perf.extend(results[str(i)]["warm_start"][key][ind])
+        for key in results[str(i)]["tl"]:
+            tl_perf.extend(results[str(i)]["tl"][key][ind])
         c_success.append(np.mean(cfqi_perf))
         f_success.append(np.mean(fqi_perf))
         w_success.append(np.mean(ws_perf))
@@ -93,19 +95,19 @@ def plot_performance(results, ds='bg', figname=""):
         m, h = mean_confidence_interval(ws_perf)
         w_errs.append(h)
         m, h = mean_confidence_interval(tl_perf)
-        t_errs.append(h) 
+        t_errs.append(h)
     x = [k for k in range(0, 11)]
     plt.figure(figsize=(10, 6))
-    sns.scatterplot(x, c_success, label='CFQI')
-    plt.errorbar(x, c_success ,yerr=c_errs, linestyle="None")
-    sns.scatterplot(x, f_success, label='FQI')
-    plt.errorbar(x, f_success ,yerr=f_errs, linestyle="None")
-    sns.scatterplot(x, w_success, label='Warm Start')
-    plt.errorbar(x, w_success ,yerr=w_errs, linestyle="None")
-    sns.scatterplot(x, t_success, label='Transfer Learning')
-    plt.errorbar(x, t_success ,yerr=t_errs, linestyle="None")
-    plt.legend(prop={'size': 12})
-    if ds == 'bg':
+    sns.scatterplot(x, c_success, label="CFQI")
+    plt.errorbar(x, c_success, yerr=c_errs, linestyle="None")
+    sns.scatterplot(x, f_success, label="FQI")
+    plt.errorbar(x, f_success, yerr=f_errs, linestyle="None")
+    sns.scatterplot(x, w_success, label="Warm Start")
+    plt.errorbar(x, w_success, yerr=w_errs, linestyle="None")
+    sns.scatterplot(x, t_success, label="Transfer Learning")
+    plt.errorbar(x, t_success, yerr=t_errs, linestyle="None")
+    plt.legend(prop={"size": 12})
+    if ds == "bg":
         # plt.title("Background Dataset: Performance of CFQI, FQI, Warm Start, Transfer Learning when force on cart is modified")
         plt.title("Cartpole performance, background")
     else:
@@ -115,18 +117,22 @@ def plot_performance(results, ds='bg', figname=""):
     plt.tight_layout()
     plt.savefig(figname)
     plt.show()
+
+
 # plt.figure(figsize=(24, 8))
 # plt.suptitle("Performance when force on cart is modified")
 # plt.subplot(121)
-plot_performance(results, ds='bg', figname="../plots/bg_force_v_performance.png")
+plot_performance(results, ds="bg", figname="../plots/bg_force_v_performance.png")
 # plt.subplot(122)
-plot_performance(results, ds='fg', figname="../plots/fg_force_v_performance.png")
+plot_performance(results, ds="fg", figname="../plots/fg_force_v_performance.png")
 # plt.tight_layout()
 # plt.savefig("./plots/force_v_performance.png")
 # plt.show()
 
 
-import ipdb; ipdb.set_trace()
+import ipdb
+
+ipdb.set_trace()
 
 
 #### Range of forces
@@ -140,7 +146,6 @@ import ipdb; ipdb.set_trace()
 #     m, se = np.mean(a), scipy.stats.sem(a)
 #     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
 #     return m, h
-
 
 
 # c_success = []
@@ -164,7 +169,7 @@ import ipdb; ipdb.set_trace()
 #         ws_perf.extend(results[str(i)]['warm_start'][key])
 #     for key in results[str(i)]['tl']:
 #         tl_perf.extend(results[str(i)]['tl'][key])
-    
+
 #     c_success.append(np.mean(cfqi_perf))
 #     f_success.append(np.mean(fqi_perf))
 #     w_success.append(np.mean(ws_perf))
@@ -176,8 +181,8 @@ import ipdb; ipdb.set_trace()
 #     m, h = mean_confidence_interval(ws_perf)
 #     w_errs.append(h)
 #     m, h = mean_confidence_interval(tl_perf)
-#     t_errs.append(h) 
-    
+#     t_errs.append(h)
+
 # x = [k for k in range(11)]
 # plt.figure(figsize=(10, 7))
 # sns.scatterplot(x, c_success, label='CFQI')
@@ -194,6 +199,3 @@ import ipdb; ipdb.set_trace()
 # plt.tight_layout()
 # plt.savefig("./plots/forceleftrange.png")
 # plt.show()
-
-
-
