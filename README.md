@@ -46,13 +46,9 @@ Each of these experiments corresponds to a `.py` file in the `simulated_experime
 Each of these experiments outputs a `.json` file containing the results. The plots can be generated using the correspoding files in the `simulated_experiments/plotting` directory.
 
 ### MIMIC-IV
-
-```eval
-python eval.py --model-file mymodel.pth --benchmark imagenet
-```
-
-<!-- >📋  Describe how to evaluate the trained models on benchmarks reported in the paper, give commands that produce the results (section below). -->
-
+We evaluate CFQI on MIMIC-IV by first training CFQI on our MDP as described in the paper. We then evaluate it by generating SHAP plots for renal and non-renal patients and by identifying which
+actions are most common. These experimments can be seen in experimental_fqi/mimic-iv_experiments.ipynb. We do not include data or data preprocessing steps because the MIMIC-IV dataset is semi-private.
+To become a credentialed user and access the data, visit Physionet (https://physionet.org/content/mimiciv/1.0/). 
 
 ## Results
 
@@ -77,4 +73,4 @@ As an example of our results, we show the outcome of the "cumulative reward" exp
 ## Contributing
 
 We include an MIT license. If you would like to contribute to this repository, create a branch and merge with a pull request to the original authors.
-If you have questions, please contact Aishwarya Mandyam (aishwarya@princeton.edu).
+If you have questions, please contact the authors (email).
