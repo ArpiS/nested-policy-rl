@@ -77,10 +77,18 @@ def main():
         fg_cart_mass = 1.0
         bg_pole_mass = 0.1
         fg_pole_mass = 0.1
-        train_env_bg = CartPoleRegulatorEnv(mode="train", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0)
-        train_env_fg = CartPoleRegulatorEnv(mode="train", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1)
-        eval_env_bg = CartPoleRegulatorEnv(mode="eval", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0)
-        eval_env_fg = CartPoleRegulatorEnv(mode="eval", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1)
+        train_env_bg = CartPoleRegulatorEnv(
+            mode="train", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0
+        )
+        train_env_fg = CartPoleRegulatorEnv(
+            mode="train", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1
+        )
+        eval_env_bg = CartPoleRegulatorEnv(
+            mode="eval", masscart=bg_cart_mass, masspole=bg_pole_mass, group=0
+        )
+        eval_env_fg = CartPoleRegulatorEnv(
+            mode="eval", masscart=fg_cart_mass, masspole=fg_pole_mass, group=1
+        )
 
         # bg_cart_mass = 1.0
         # fg_cart_mass = 1.0
@@ -97,11 +105,15 @@ def main():
             eval_env_bg.seed(CONFIG.RANDOM_SEED)
             eval_env_fg.seed(CONFIG.RANDOM_SEED)
         else:
-            logger.warning("Running without a random seed: this run is NOT reproducible.")
+            logger.warning(
+                "Running without a random seed: this run is NOT reproducible."
+            )
 
         # Setup agent
         # nfq_net = NFQNetwork(state_dim=train_env_bg.state_dim)
-        nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=True)
+        nfq_net = ContrastiveNFQNetwork(
+            state_dim=train_env_bg.state_dim, is_contrastive=True
+        )
         # optimizer = optim.Rprop(nfq_net.parameters())
         optimizer = optim.Adam(nfq_net.parameters(), lr=0.1)
         nfq_agent = NFQAgent(nfq_net, optimizer)
@@ -128,19 +140,25 @@ def main():
                 total_cost += episode_cost
         bg_rollouts.extend(fg_rollouts)
         all_rollouts = bg_rollouts.copy()
-        
+
         for epoch in range(CONFIG.EPOCH + 1):
 
-            state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(all_rollouts)
+            state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(
+                all_rollouts
+            )
 
             loss = nfq_agent.train((state_action_b, target_q_values, groups))
 
-            eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(
-                eval_env_bg, render=False
-            )
-            eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(
-                eval_env_fg, render=False
-            )
+            (
+                eval_episode_length_bg,
+                eval_success_bg,
+                eval_episode_cost_bg,
+            ) = nfq_agent.evaluate(eval_env_bg, render=False)
+            (
+                eval_episode_length_fg,
+                eval_success_fg,
+                eval_episode_cost_fg,
+            ) = nfq_agent.evaluate(eval_env_fg, render=False)
 
             # Print current status
             logger.info(
@@ -148,7 +166,12 @@ def main():
                 #     epoch, eval_env_bg.success_step, eval_episode_cost_bg, eval_env_fg.success_step, eval_episode_cost_fg, loss
                 # )
                 "Epoch {:4d} | Eval BG {:4d} / {:4f} | Eval FG {:4d} / {:4f} | Train Loss {:.4f}".format(
-                    epoch, eval_episode_length_bg, eval_episode_cost_bg, eval_episode_length_fg, eval_episode_cost_fg, loss
+                    epoch,
+                    eval_episode_length_bg,
+                    eval_episode_cost_bg,
+                    eval_episode_length_fg,
+                    eval_episode_cost_fg,
+                    loss,
                 )
             )
             if CONFIG.USE_TENSORBOARD:
@@ -193,20 +216,24 @@ def main():
 
         eval_env_bg.step_number = 0
         eval_env_fg.step_number = 0
-        
-        eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg = nfq_agent.evaluate(eval_env_bg, False)
+
+        (
+            eval_episode_length_bg,
+            eval_success_bg,
+            eval_episode_cost_bg,
+        ) = nfq_agent.evaluate(eval_env_bg, False)
         print(eval_episode_length_bg, eval_success_bg)
         train_env_bg.close()
         eval_env_bg.close()
-        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = nfq_agent.evaluate(eval_env_fg, False)
+        (
+            eval_episode_length_fg,
+            eval_success_fg,
+            eval_episode_cost_fg,
+        ) = nfq_agent.evaluate(eval_env_fg, False)
         print(eval_episode_length_fg, eval_success_fg)
         train_env_fg.close()
         eval_env_fg.close()
         # import ipdb; ipdb.set_trace()
-    
-    
-    
-    
 
 
 if __name__ == "__main__":
