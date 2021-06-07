@@ -90,8 +90,11 @@ class AcrobotEnv(core.Env):
 		low = -high
 		self.observation_space = spaces.Box(low=low, high=high, dtype=np.float32)
 		self.action_space = spaces.Discrete(3)
+		self.unique_actions = np.array([-1, 0, 1])
 		self.state = None
 		self.group = group
+		if self.group == 1:
+			LINK_LENGTH_2 = 1.5
 		self.state_dim = 6
 		self.mode = mode
 		self.max_steps = 300
