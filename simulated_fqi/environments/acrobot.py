@@ -99,7 +99,7 @@ class AcrobotEnv(core.Env):
 		self.state = None
 		self.group = group
 		if self.group == 1:
-			LINK_LENGTH_2 = 1.5
+			LINK_LENGTH_2 = 0.75
 		self.state_dim = 6
 		self.mode = mode
 		self.max_steps = 300
