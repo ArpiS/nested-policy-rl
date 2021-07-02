@@ -77,6 +77,7 @@ class NFQAgent:
         self,
         rollouts: List[Tuple[np.array, int, int, np.array, bool]],
         gamma: float = 0.95,
+        reward_weights=np.asarray([0.1] * 5),
     ):
         """Generate pattern set.
         Parameters
@@ -99,6 +100,8 @@ class NFQAgent:
         next_state_b = torch.FloatTensor(next_state_b)
         done_b = torch.FloatTensor(done_b)
         group_b = torch.FloatTensor(group_b).unsqueeze(1)
+
+        scale_rewards = False
 
         if len(action_b.size()) == 1:
             action_b = action_b.unsqueeze(1)
@@ -123,7 +126,20 @@ class NFQAgent:
         #                        due to entering forbidden state. It is not
         #                        True if it terminated due to maximum timestep.
         with torch.no_grad():
-            target_q_values = cost_b.squeeze() + gamma * q_next_state_b * (1 - done_b)
+            # wTs to replace cost_b
+            if scale_rewards:
+                reward_weights = np.reshape(reward_weights, (1, 5))
+                reward_weights = torch.FloatTensor(reward_weights)
+                s_a = torch.cat([state_b, action_b], 1)
+                scaled_cost = np.matmul(reward_weights, s_a.T)
+                scaled_cost = torch.FloatTensor(scaled_cost)
+                target_q_values = scaled_cost.squeeze() + gamma * q_next_state_b * (
+                    1 - done_b
+                )
+            else:
+                target_q_values = cost_b.squeeze() + gamma * q_next_state_b * (
+                    1 - done_b
+                )
 
         return state_action_b, target_q_values, group_b
 
@@ -194,9 +210,8 @@ class NFQAgent:
                 eval_env.render()
 
         success = (
-            done == True
-            #episode_length == eval_env.max_steps
-            #and abs(obs[0]) <= eval_env.x_success_range
+            episode_length == eval_env.max_steps
+            and abs(obs[0]) <= eval_env.x_success_range
         )
 
         return episode_length, success, episode_cost
@@ -237,6 +252,44 @@ class NFQAgent:
             success_length == eval_env.max_steps
             and abs(obs[0]) <= eval_env.x_success_range
         )
+
+        return success_length, success, episode_cost
+
+    def evaluate_car(self, eval_env: gym.Env, render: bool) -> Tuple[int, str, float]:
+        """Evaluate NFQ agent on evaluation environment.
+        Parameters
+        ----------
+        eval_env : gym.Env
+            Environment to evaluate the agent.
+        render: bool
+            If true, render environment.
+        Returns
+        -------
+        episode_length : int
+            Number of steps the agent took.
+        success : bool
+            True if the agent was terminated due to max timestep.
+        episode_cost : float
+            Total cost accumulated from the evaluation episode.
+        """
+        success_length = 0
+        obs = eval_env.reset()
+        done = False
+        episode_cost = 0
+        step_limit = 100
+        it = 0
+        while not done and it < step_limit:
+            action = self.get_best_action(obs, eval_env.unique_actions, eval_env.group)
+            obs, cost, done, info = eval_env.step(action)
+            episode_cost += cost
+            if cost >= 99.9:
+                success_length += 1
+
+            if render:
+                eval_env.render()
+            it += 1
+
+        success = done
 
         return success_length, success, episode_cost
 

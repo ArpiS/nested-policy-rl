@@ -49,14 +49,17 @@ class MountainCarEnv(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 30}
 
-    def __init__(self, goal_velocity=0):
+    def __init__(self, goal_velocity=0, group=0):
         self.min_position = -1.2
         self.max_position = 0.6
         self.max_speed = 0.07
         self.goal_position = 0.5
         self.goal_velocity = goal_velocity
-
-        self.force = 0.001
+        
+        if group == 0:
+            self.force = 0.001
+        else:
+            self.force = 0.0001
         self.gravity = 0.0025
 
         self.low = np.array([self.min_position, -self.max_speed], dtype=np.float32)

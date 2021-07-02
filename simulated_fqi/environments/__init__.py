@@ -6,3 +6,5 @@
 from environments.cartpole import CartPoleRegulatorEnv
 from environments.cart import CartEnv
 from environments.acrobot import AcrobotEnv
+from environments.mountain_car import MountainCarEnv
+from environments.continuous_mountaincar import Continuous_MountainCarEnv
