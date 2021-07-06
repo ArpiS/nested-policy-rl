@@ -42,7 +42,7 @@ class Continuous_MountainCarEnv(gym.Env):
         if group == 0:
             self.power = 0.0015
         else:
-            self.power = 0.007
+            self.power = 0.0007
 
         self.low_state = np.array(
             [self.min_position, -self.max_speed], dtype=np.float32
@@ -106,13 +106,12 @@ class Continuous_MountainCarEnv(gym.Env):
         return self.state, reward, done, {}
 
     def reset(self):
-        flip = random.randint(0, 1)
-        if flip == 0:
-            self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
-        else:
-            self.state = np.array([self.np_random.uniform(low=0.4, high=0.6), 0.5])
+        self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
         return np.array(self.state)
 
+    def reset_cheat(self):
+        self.state = np.array([self.np_random.uniform(low=0.4, high=0.6), 0.5])
+        return np.array(self.state)
     def _height(self, xs):
         return np.sin(3 * xs)*.45+.55
 
@@ -187,7 +186,7 @@ class Continuous_MountainCarEnv(gym.Env):
         get_best_action: Callable = None,
         render: bool = False,
         rollout_length: int = 50,
-        group: int = 1,
+        group: int = 1, dataset='train'
     ) -> List[Tuple[np.array, int, int, np.array, bool, int]]:
         """
         Generate rollout using given action selection function.
@@ -207,7 +206,16 @@ class Continuous_MountainCarEnv(gym.Env):
         """
         rollout = []
         episode_cost = 0
-        obs = self.reset()
+
+        if dataset == 'train':
+            flip = random.randint(0, 1)
+            if flip == 0:
+                obs = self.reset()
+            else:
+                obs = self.reset_cheat()
+        else:
+            obs = self.reset()
+
         info = {"time_limit": False}
         for ii in range(rollout_length):
             if get_best_action:

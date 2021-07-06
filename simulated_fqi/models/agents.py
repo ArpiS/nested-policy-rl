@@ -282,16 +282,12 @@ class NFQAgent:
             action = self.get_best_action(obs, eval_env.unique_actions, eval_env.group)
             obs, cost, done, info = eval_env.step(action)
             episode_cost += cost
-            if cost >= 99.9:
-                success_length += 1
 
             if render:
                 eval_env.render()
             it += 1
 
-        success = done
-
-        return success_length, success, episode_cost
+        return success_length, done, episode_cost
 
     def evaluate_pendulum(
         self, eval_env: gym.Env, num_steps: int = 100, render: bool = False
