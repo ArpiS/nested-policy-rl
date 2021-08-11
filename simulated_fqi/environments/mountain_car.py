@@ -96,13 +96,16 @@ class MountainCarEnv(gym.Env):
         if position >= self.goal_position:
             reward = 100
         else:
-            reward = position
+            reward = 0
 
         self.state = (position, velocity)
         return np.array(self.state), reward, done, {}
 
     def reset(self):
-        self.state = np.array([self.np_random.uniform(low=-0.6, high=0.3), 0])
+        self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0.3])
+        return np.array(self.state)
+    def reset_cheat(self):
+        self.state = np.array([self.np_random.uniform(low=0.4, high=0.6), 0.5])
         return np.array(self.state)
 
     def _height(self, xs):
