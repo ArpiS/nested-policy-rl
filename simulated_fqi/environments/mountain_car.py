@@ -102,10 +102,10 @@ class MountainCarEnv(gym.Env):
         return np.array(self.state), reward, done, {}
 
     def reset(self):
-        self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0.3])
+        self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0.0])
         return np.array(self.state)
     def reset_cheat(self):
-        self.state = np.array([self.np_random.uniform(low=0.4, high=0.6), 0.5])
+        self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0.3])
         return np.array(self.state)
 
     def _height(self, xs):
@@ -208,11 +208,7 @@ class MountainCarEnv(gym.Env):
         episode_cost = 0
 
         if dataset == 'train':
-#             flip = random.randint(0, 1)
-#             if flip == 0:
-            obs = self.reset()
-#             else:
-#                 obs = self.reset_cheat()
+            obs = self.reset_cheat()
         else:
             obs = self.reset()
 
