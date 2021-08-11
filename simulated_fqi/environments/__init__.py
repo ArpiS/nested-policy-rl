@@ -8,3 +8,5 @@ from environments.cart import CartEnv
 from environments.acrobot import AcrobotEnv
 from environments.mountain_car import MountainCarEnv
 from environments.continuous_mountaincar import Continuous_MountainCarEnv
+#from environments.mujoco_env import mujoco_env
+#from environments.inverted_double_pendulum import InvertedDoublePendulumEnv

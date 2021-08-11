@@ -35,9 +35,9 @@ class MountainCarEnv(gym.Env):
         Note: This does not affect the amount of velocity affected by the
         gravitational pull acting on the car.
     Reward:
-         Reward of 0 is awarded if the agent reached the flag (position = 0.5)
+         Reward of 100 is awarded if the agent reached the flag (position = 0.5)
          on top of the mountain.
-         Reward of -1 is awarded if the position of the agent is less than 0.5.
+         Reward of 0 is awarded if the position of the agent is less than 0.5.
     Starting State:
          The position of the car is assigned a uniform random value in
          [-0.6 , -0.4].
@@ -55,18 +55,20 @@ class MountainCarEnv(gym.Env):
         self.max_speed = 0.07
         self.goal_position = 0.5
         self.goal_velocity = goal_velocity
+        self.state_dim = 2
         
         if group == 0:
             self.force = 0.001
         else:
             self.force = 0.0001
         self.gravity = 0.0025
+        self.group = group
 
         self.low = np.array([self.min_position, -self.max_speed], dtype=np.float32)
         self.high = np.array([self.max_position, self.max_speed], dtype=np.float32)
 
         self.viewer = None
-
+        self.unique_actions = np.array([0, 1, 2])
         self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
 
@@ -91,13 +93,16 @@ class MountainCarEnv(gym.Env):
             velocity = 0
 
         done = bool(position >= self.goal_position and velocity >= self.goal_velocity)
-        reward = -1.0
+        if position >= self.goal_position:
+            reward = 100
+        else:
+            reward = position
 
         self.state = (position, velocity)
         return np.array(self.state), reward, done, {}
 
     def reset(self):
-        self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0])
+        self.state = np.array([self.np_random.uniform(low=-0.6, high=0.3), 0])
         return np.array(self.state)
 
     def _height(self, xs):
@@ -173,6 +178,61 @@ class MountainCarEnv(gym.Env):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+    
+    def generate_rollout(
+        self,
+        agent= None,
+        render= False,
+        rollout_length= 50,
+        group = 1, dataset='train'):
+        """
+        Generate rollout using given action selection function.
+        If a network is not given, generate random rollout instead.
+        Parameters
+        ----------
+        get_best_action : Callable
+            Greedy policy.
+        render: bool
+            If true, render environment.
+        Returns
+        -------
+        rollout : List of Tuple
+            Generated rollout.
+        episode_cost : float
+            Cumulative cost throughout the episode.
+        """
+        rollout = []
+        episode_cost = 0
+
+        if dataset == 'train':
+#             flip = random.randint(0, 1)
+#             if flip == 0:
+            obs = self.reset()
+#             else:
+#                 obs = self.reset_cheat()
+        else:
+            obs = self.reset()
+
+        info = {"time_limit": False}
+        for ii in range(rollout_length):
+            if agent is not None:
+                action = agent.get_best_action(obs, self.unique_actions, group)
+            else:
+                # action = self.action_space.sample()
+                action = self.action_space.sample()
+
+            next_obs, cost, done, info = self.step(action)
+            rollout.append(
+                (obs.squeeze(), action, cost, next_obs.squeeze(), done, group)
+            )
+            episode_cost += cost
+            obs = next_obs
+            # import ipdb; ipdb.set_trace()
+
+            if render:
+                self.render()
+
+        return rollout, episode_cost
 
 
 if __name__ == "__main__":
