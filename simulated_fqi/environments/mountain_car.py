@@ -29,9 +29,12 @@ class MountainCarEnv(gym.Env):
     Actions:
         Type: Discrete(3)
         Num    Action
+        #0      Accelerate to the Left
+        #1      Don't accelerate
+        #2      Accelerate to the Right
         0      Accelerate to the Left
-        1      Don't accelerate
-        2      Accelerate to the Right
+        #1      Don't accelerate
+        1      Accelerate to the Right
         Note: This does not affect the amount of velocity affected by the
         gravitational pull acting on the car.
     Reward:
@@ -40,7 +43,7 @@ class MountainCarEnv(gym.Env):
          Reward of 0 is awarded if the position of the agent is less than 0.5.
     Starting State:
          The position of the car is assigned a uniform random value in
-         [-0.6 , -0.4].
+         [-0.75 , 0.5]. (Used to be -0.6 to -0.4)
          The starting velocity of the car is always assigned to 0.
     Episode Termination:
          The car position is more than 0.5
@@ -68,7 +71,7 @@ class MountainCarEnv(gym.Env):
         self.high = np.array([self.max_position, self.max_speed], dtype=np.float32)
 
         self.viewer = None
-        self.unique_actions = np.array([0, 1, 2])
+        self.unique_actions = np.array([-4, 4])
         self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
 
@@ -79,10 +82,10 @@ class MountainCarEnv(gym.Env):
         return [seed]
 
     def step(self, action):
-        assert self.action_space.contains(action), "%r (%s) invalid" % (
-            action,
-            type(action),
-        )
+        #assert self.action_space.contains(action), "%r (%s) invalid" % (
+        #    action,
+        #    type(action),
+        #)
 
         position, velocity = self.state
         velocity += (action - 1) * self.force + math.cos(3 * position) * (-self.gravity)
@@ -102,10 +105,10 @@ class MountainCarEnv(gym.Env):
         return np.array(self.state), reward, done, {}
 
     def reset(self):
-        self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0.0])
+        self.state = np.array([self.np_random.uniform(low=-0.75, high=0.5), 0.0])
         return np.array(self.state)
     def reset_cheat(self):
-        self.state = np.array([self.np_random.uniform(low=-0.6, high=-0.4), 0.3])
+        self.state = np.array([self.np_random.uniform(low=-0.75, high=0.5), 0.0])
         return np.array(self.state)
 
     def _height(self, xs):
@@ -217,15 +220,15 @@ class MountainCarEnv(gym.Env):
             if agent is not None:
                 action = agent.get_best_action(obs, self.unique_actions, group)
             else:
-                # action = self.action_space.sample()
-                action = self.action_space.sample()
-
+                action = np.random.choice(self.unique_actions)
             next_obs, cost, done, info = self.step(action)
             rollout.append(
                 (obs.squeeze(), action, cost, next_obs.squeeze(), done, group)
             )
             episode_cost += cost
             obs = next_obs
+            if done:
+                break
             # import ipdb; ipdb.set_trace()
 
             if render:
