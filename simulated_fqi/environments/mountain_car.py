@@ -113,6 +113,31 @@ class MountainCarEnv(gym.Env):
 
     def _height(self, xs):
         return np.sin(3 * xs) * 0.45 + 0.55
+    
+    def get_goal_pattern_set(self, size: int = 100):
+        """Use hint-to-goal heuristic to clamp network output.
+        Parameters
+        ----------
+        size : int
+            The size of the goal pattern set to generate.
+        Returns
+        -------
+        pattern_set : tuple of np.ndarray
+            Pattern set to train the NFQ network.
+        """
+        goal_state_action_b = [
+            np.array(
+                [
+                    np.random.uniform(0.5, 0.55),
+                    np.random.uniform(self.goal_velocity, self.goal_velocity + 0.1),
+                    np.random.choice([4, -4])
+                ]
+            )
+            for _ in range(size)
+        ]
+        goal_target_q_values = np.zeros(size)
+
+        return goal_state_action_b, goal_target_q_values
 
     def render(self, mode="human"):
         screen_width = 600
