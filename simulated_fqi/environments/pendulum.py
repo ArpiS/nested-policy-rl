@@ -22,7 +22,7 @@ class PendulumEnv(gym.Env):
         self.l = 1.0
         self.viewer = None
         self.state_dim = 3
-        self.unique_actions = np.arange(-self.max_torque, self.max_torque + 1e-5, 0.1)
+        self.unique_actions = [-2, 0, 2]
         self.group = group
         self.step_number = 0
         self.max_steps = max_steps
@@ -50,26 +50,12 @@ class PendulumEnv(gym.Env):
         m = self.m
         l = self.l
         dt = self.dt
+        done = False
 
-        # import ipdb; ipdb.set_trace()
         u = np.clip(u, -self.max_torque, self.max_torque)
         if isinstance(u, list):
             u = u[0]
         self.last_u = u  # for rendering
-        # cost = angle_normalize(th) ** 2 + .1 * thdot ** 2 + .001 * (u ** 2)
-
-        # if (
-        #     -self.theta_success_range < th < self.theta_success_range
-        # ):
-        #     cost = 0
-        # elif (
-        #     -2 * self.theta_success_range < th < 2 * self.theta_success_range
-        # ):
-        #     cost = 0.1
-        # else:
-        #     cost = 1
-        # print(angle_normalize(th))
-        # cost = np.abs((th + np.pi) / (2*np.pi))
         cost = angle_normalize(th) ** 2 / (np.pi ** 2)
 
         newthdot = (
@@ -85,20 +71,54 @@ class PendulumEnv(gym.Env):
         info = {"time_limit": False}
         if self.step_number == self.max_steps:
             info["time_limit"] = True
-        return self._get_obs(), cost, False, info
+        if self.step_number == self.max_steps:
+            done = True
+        return self._get_obs(), cost, done, info
 
     def reset(self):
         # if self.mode == "train":
         high = np.array([np.pi, 1])
         # else:
         # high = np.array([0.2 * np.pi, 1])
-        self.state = self.np_random.uniform(low=-high, high=high)
+        #self.state = self.np_random.uniform(low=-high, high=high)
+        self.state = np.asarray([0, 1])
         self.last_u = None
         return self._get_obs()
 
     def _get_obs(self):
         theta, thetadot = self.state
         return np.array([np.cos(theta), np.sin(theta), thetadot])
+    
+#     def get_goal_pattern_set(self, size: int = 100):
+#         """Use hint-to-goal heuristic to clamp network output.
+#         Parameters
+#         ----------
+#         size : int
+#             The size of the goal pattern set to generate.
+#         Returns
+#         -------
+#         pattern_set : tuple of np.ndarray
+#             Pattern set to train the NFQ network.
+#         """
+#         goal_state_action_b = [
+#             np.array(
+#                 [
+#                     # NOTE(seungjaeryanlee): The success state in hint-to-goal is not relaxed.
+#                     # TODO(seungjaeryanlee): What is goal velocity?
+#                     np.random.uniform(-0.05, 0.05),
+#                     np.random.normal(),
+#                     np.random.uniform(
+#                         -self.theta_success_range, self.theta_success_range
+#                     ),
+#                     np.random.normal(),
+#                     np.random.randint(2),
+#                 ]
+#             )
+#             for _ in range(size)
+#         ]
+#         goal_target_q_values = np.zeros(size)
+
+#         return goal_state_action_b, goal_target_q_values
 
     def render(self, mode="human"):
         if self.viewer is None:
