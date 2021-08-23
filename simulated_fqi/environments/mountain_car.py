@@ -9,6 +9,7 @@ import numpy as np
 import gym
 from gym import spaces
 from gym.utils import seeding
+import torch
 
 ASSETS_DIR = "../../gym/gym/envs/classic_control/assets"
 
@@ -60,10 +61,7 @@ class MountainCarEnv(gym.Env):
         self.goal_velocity = goal_velocity
         self.state_dim = 2
         
-        if group == 0:
-            self.force = 0.001
-        else:
-            self.force = 0.0001
+        self.force = 0.001
         self.gravity = 0.0025
         self.group = group
 
@@ -71,8 +69,13 @@ class MountainCarEnv(gym.Env):
         self.high = np.array([self.max_position, self.max_speed], dtype=np.float32)
 
         self.viewer = None
-        self.unique_actions = np.array([-4, 4])
-        self.action_space = spaces.Discrete(3)
+        # Render the car
+        # Run some of experiments for cartpole
+        if self.group == 1:
+            self.unique_actions = np.array([-4, 5])
+        elif self.group == 0:
+            self.unique_actions = np.array([-2, 3])
+        #self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
 
         self.seed()
@@ -114,7 +117,7 @@ class MountainCarEnv(gym.Env):
     def _height(self, xs):
         return np.sin(3 * xs) * 0.45 + 0.55
     
-    def get_goal_pattern_set(self, size: int = 100):
+    def get_goal_pattern_set(self, size: int = 100, group=0):
         """Use hint-to-goal heuristic to clamp network output.
         Parameters
         ----------
@@ -136,8 +139,10 @@ class MountainCarEnv(gym.Env):
             for _ in range(size)
         ]
         goal_target_q_values = np.zeros(size)
-
-        return goal_state_action_b, goal_target_q_values
+        groups = np.asarray([group]*size)
+        group_b = torch.FloatTensor(groups).unsqueeze(1)
+        
+        return goal_state_action_b, goal_target_q_values, group_b
 
     def render(self, mode="human"):
         screen_width = 600
