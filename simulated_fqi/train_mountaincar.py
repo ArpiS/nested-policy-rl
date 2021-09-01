@@ -2,7 +2,8 @@ import configargparse
 import torch
 import torch.optim as optim
 import sys
-sys.path.append('../')
+
+sys.path.append("../")
 
 from environments import MountainCarEnv, Continuous_MountainCarEnv
 from models.agents import NFQAgent
@@ -14,9 +15,22 @@ import itertools
 import seaborn as sns
 import tqdm
 
-def generate_data(init_experience=100, bg_only=False, separated=False, agent=None, dataset='train'):
-    env_bg = MountainCarEnv(group=0)
-    env_fg = MountainCarEnv(group=1)
+
+def generate_data(
+    init_experience=100,
+    bg_only=False,
+    separated=False,
+    agent=None,
+    dataset="train",
+    structureless=False,
+    gravity=0.004,
+):
+    if structureless:
+        env_bg = MountainCarEnv(group=0, gravity=0.0025)
+        env_fg = MountainCarEnv(group=1, gravity=0.0025)
+    else:
+        env_bg = MountainCarEnv(group=0, gravity=0.0025)
+        env_fg = MountainCarEnv(group=1, gravity=gravity)
     bg_rollouts = []
     fg_rollouts = []
     if init_experience > 0:
@@ -37,20 +51,51 @@ def generate_data(init_experience=100, bg_only=False, separated=False, agent=Non
     else:
         return all_rollouts, env_bg, env_fg
 
-def fqi(is_contrastive, epoch, hint_to_goal=True, init_experience=200, verbose=False):
-    train_rollouts, train_env_bg, train_env_fg = generate_data(init_experience=init_experience, bg_only=False)
-    test_rollouts, eval_env_bg, eval_env_fg = generate_data(init_experience=init_experience, bg_only=False)
+
+def fqi(
+    is_contrastive,
+    epoch,
+    gravity,
+    hint_to_goal=True,
+    init_experience=200,
+    verbose=False,
+    structureless=False,
+):
+    if structureless:
+        train_rollouts, train_env_bg, train_env_fg = generate_data(
+            init_experience=init_experience, bg_only=False, structureless=True
+        )
+        test_rollouts, eval_env_bg, eval_env_fg = generate_data(
+            init_experience=init_experience, bg_only=False, structureless=True
+        )
+    else:
+        train_rollouts, train_env_bg, train_env_fg = generate_data(
+            init_experience=init_experience, gravity=gravity, bg_only=False
+        )
+        test_rollouts, eval_env_bg, eval_env_fg = generate_data(
+            init_experience=init_experience, gravity=gravity, bg_only=False
+        )
 
     if hint_to_goal:
-        goal_state_action_b_bg, goal_target_q_values_bg, group_bg = train_env_bg.get_goal_pattern_set(group=0)
-        goal_state_action_b_fg, goal_target_q_values_fg, group_fg = train_env_fg.get_goal_pattern_set(group=1)
+        (
+            goal_state_action_b_bg,
+            goal_target_q_values_bg,
+            group_bg,
+        ) = train_env_bg.get_goal_pattern_set(group=0)
+        (
+            goal_state_action_b_fg,
+            goal_target_q_values_fg,
+            group_fg,
+        ) = train_env_fg.get_goal_pattern_set(group=1)
 
         goal_state_action_b_bg = torch.FloatTensor(goal_state_action_b_bg)
         goal_target_q_values_bg = torch.FloatTensor(goal_target_q_values_bg)
         goal_state_action_b_fg = torch.FloatTensor(goal_state_action_b_fg)
         goal_target_q_values_fg = torch.FloatTensor(goal_target_q_values_fg)
 
-    nfq_net = ContrastiveNFQNetwork(state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive, deep=False)
+    nfq_net = ContrastiveNFQNetwork(
+        state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive, deep=False
+    )
     optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
 
     nfq_agent = NFQAgent(nfq_net, optimizer)
@@ -60,10 +105,16 @@ def fqi(is_contrastive, epoch, hint_to_goal=True, init_experience=200, verbose=F
     eval_fg = 0
     evaluations = 5
     for k, ep in enumerate(tqdm.tqdm(range(epoch + 1))):
-        state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(train_rollouts)
+        state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(
+            train_rollouts
+        )
         if hint_to_goal:
-            goal_state_action_b = torch.cat([goal_state_action_b_bg, goal_state_action_b_fg], dim=0)
-            goal_target_q_values = torch.cat([goal_target_q_values_bg, goal_target_q_values_fg], dim=0)
+            goal_state_action_b = torch.cat(
+                [goal_state_action_b_bg, goal_state_action_b_fg], dim=0
+            )
+            goal_target_q_values = torch.cat(
+                [goal_target_q_values_bg, goal_target_q_values_fg], dim=0
+            )
             state_action_b = torch.cat([state_action_b, goal_state_action_b], dim=0)
             target_q_values = torch.cat([target_q_values, goal_target_q_values], dim=0)
             goal_groups = torch.cat([group_bg, group_fg], dim=0)
@@ -78,11 +129,19 @@ def fqi(is_contrastive, epoch, hint_to_goal=True, init_experience=200, verbose=F
             if eval_fg > 50:
                 loss = nfq_agent.train((state_action_b, target_q_values, groups))
 
-        (eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+        (
+            eval_episode_length_bg,
+            eval_success_bg,
+            eval_episode_cost_bg,
+        ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
         bg_success_queue = bg_success_queue[1:]
         bg_success_queue.append(1 if eval_success_bg else 0)
 
-        (eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+        (
+            eval_episode_length_fg,
+            eval_success_fg,
+            eval_episode_cost_fg,
+        ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
         fg_success_queue = fg_success_queue[1:]
         fg_success_queue.append(1 if eval_success_fg else 0)
 
@@ -122,8 +181,16 @@ def fqi(is_contrastive, epoch, hint_to_goal=True, init_experience=200, verbose=F
             perf_bg = []
             perf_fg = []
             for it in range(evaluations):
-                (eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg) = nfq_agent.evaluate_car(eval_env_bg, render=False)
-                (eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+                (
+                    eval_episode_length_bg,
+                    eval_success_bg,
+                    eval_episode_cost_bg,
+                ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+                (
+                    eval_episode_length_fg,
+                    eval_success_fg,
+                    eval_episode_cost_fg,
+                ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
                 perf_bg.append(eval_episode_cost_bg)
                 perf_fg.append(eval_episode_cost_fg)
                 train_env_bg.close()
@@ -131,28 +198,69 @@ def fqi(is_contrastive, epoch, hint_to_goal=True, init_experience=200, verbose=F
                 eval_env_bg.close()
                 eval_env_fg.close()
             if verbose:
-                print("Evaluation bg: " + str(perf_bg) + " Evaluation fg: " + str(perf_fg))
+                print(
+                    "Evaluation bg: " + str(perf_bg) + " Evaluation fg: " + str(perf_fg)
+                )
     perf_bg = []
     perf_fg = []
     for it in range(evaluations * 10):
-        (eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg) = nfq_agent.evaluate_car(eval_env_bg, render=False)
-        (eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+        (
+            eval_episode_length_bg,
+            eval_success_bg,
+            eval_episode_cost_bg,
+        ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+        (
+            eval_episode_length_fg,
+            eval_success_fg,
+            eval_episode_cost_fg,
+        ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
         perf_bg.append(eval_episode_cost_bg)
         perf_fg.append(eval_episode_cost_fg)
         eval_env_bg.close()
         eval_env_fg.close()
     if verbose:
-        print("Evaluation bg: " + str(sum(perf_bg) / len(perf_bg)) + " Evaluation fg: " + str(sum(perf_fg) / len(perf_fg)))
-    return sum(perf_bg)/len(perf_bg), sum(perf_fg)/len(perf_fg)
+        print(
+            "Evaluation bg: "
+            + str(sum(perf_bg) / len(perf_bg))
+            + " Evaluation fg: "
+            + str(sum(perf_fg) / len(perf_fg))
+        )
+    return sum(perf_bg) / len(perf_bg), sum(perf_fg) / len(perf_fg)
 
-def warm_start(
-    epoch,
-    init_experience=200,
-    verbose=False
-):
-    train_rollouts, train_bg_rollouts, train_fg_rollouts, train_env_bg, train_env_fg = generate_data(init_experience=init_experience,
-                                                                                                     bg_only=False, separated=True)
-    test_rollouts, eval_env_bg, eval_env_fg = generate_data(init_experience=init_experience, bg_only=False)
+
+def warm_start(epoch, gravity, init_experience=200, verbose=False, structureless=False):
+    if structureless:
+        (
+            train_rollouts,
+            train_bg_rollouts,
+            train_fg_rollouts,
+            train_env_bg,
+            train_env_fg,
+        ) = generate_data(
+            init_experience=init_experience,
+            bg_only=False,
+            separated=True,
+            structureless=True,
+        )
+        test_rollouts, eval_env_bg, eval_env_fg = generate_data(
+            init_experience=init_experience, bg_only=False, structureless=True
+        )
+    else:
+        (
+            train_rollouts,
+            train_bg_rollouts,
+            train_fg_rollouts,
+            train_env_bg,
+            train_env_fg,
+        ) = generate_data(
+            init_experience=init_experience,
+            bg_only=False,
+            separated=True,
+            gravity=gravity,
+        )
+        test_rollouts, eval_env_bg, eval_env_fg = generate_data(
+            init_experience=init_experience, bg_only=False
+        )
     bg_success_queue = [0] * 3
     fg_success_queue = [0] * 3
     bg_converged = False
@@ -221,25 +329,66 @@ def warm_start(
     perf_bg = []
     perf_fg = []
     for it in range(5 * 10):
-        (eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg) = nfq_agent.evaluate_car(eval_env_bg, render=False)
-        (eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+        (
+            eval_episode_length_bg,
+            eval_success_bg,
+            eval_episode_cost_bg,
+        ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+        (
+            eval_episode_length_fg,
+            eval_success_fg,
+            eval_episode_cost_fg,
+        ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
         perf_bg.append(eval_episode_cost_bg)
         perf_fg.append(eval_episode_cost_fg)
         eval_env_bg.close()
         eval_env_fg.close()
     if verbose:
-        print("Evaluation bg: " + str(sum(perf_bg) / len(perf_bg)) + " Evaluation fg: " + str(sum(perf_fg) / len(perf_fg)))
+        print(
+            "Evaluation bg: "
+            + str(sum(perf_bg) / len(perf_bg))
+            + " Evaluation fg: "
+            + str(sum(perf_fg) / len(perf_fg))
+        )
     return sum(perf_bg) / len(perf_bg), sum(perf_fg) / len(perf_fg)
 
 
 def transfer_learning(
-    epoch,
-    init_experience=200,
-    verbose=False,
+    epoch, gravity, init_experience=200, verbose=False, structureless=False
 ):
-    train_rollouts, train_bg_rollouts, train_fg_rollouts, train_env_bg, train_env_fg = generate_data(init_experience=init_experience,
-                                                                                                     bg_only=False, separated=True)
-    test_rollouts, eval_env_bg, eval_env_fg = generate_data(init_experience=init_experience, bg_only=False)
+    if structureless:
+        (
+            train_rollouts,
+            train_bg_rollouts,
+            train_fg_rollouts,
+            train_env_bg,
+            train_env_fg,
+        ) = generate_data(
+            init_experience=init_experience,
+            bg_only=False,
+            separated=True,
+            structureless=True,
+        )
+        test_rollouts, eval_env_bg, eval_env_fg = generate_data(
+            init_experience=init_experience, bg_only=False, structureless=True
+        )
+    else:
+        (
+            train_rollouts,
+            train_bg_rollouts,
+            train_fg_rollouts,
+            train_env_bg,
+            train_env_fg,
+        ) = generate_data(
+            init_experience=init_experience,
+            gravity=gravity,
+            bg_only=False,
+            separated=True,
+        )
+        test_rollouts, eval_env_bg, eval_env_fg = generate_data(
+            init_experience=init_experience, bg_only=False
+        )
+    bg_success_queue = [0] * 3
 
     bg_success_queue = [0] * 3
     fg_success_queue = [0] * 3
@@ -247,7 +396,7 @@ def transfer_learning(
 
     # Setup agent
     nfq_net = ContrastiveNFQNetwork(
-        state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive
+        state_dim=train_env_bg.state_dim, is_contrastive=False
     )
 
     optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
@@ -312,12 +461,25 @@ def transfer_learning(
     perf_bg = []
     perf_fg = []
     for it in range(5 * 10):
-        (eval_episode_length_bg, eval_success_bg, eval_episode_cost_bg) = nfq_agent.evaluate_car(eval_env_bg, render=False)
-        (eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+        (
+            eval_episode_length_bg,
+            eval_success_bg,
+            eval_episode_cost_bg,
+        ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+        (
+            eval_episode_length_fg,
+            eval_success_fg,
+            eval_episode_cost_fg,
+        ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
         perf_bg.append(eval_episode_cost_bg)
         perf_fg.append(eval_episode_cost_fg)
         eval_env_bg.close()
         eval_env_fg.close()
     if verbose:
-        print("Evaluation bg: " + str(sum(perf_bg) / len(perf_bg)) + " Evaluation fg: " + str(sum(perf_fg) / len(perf_fg)))
+        print(
+            "Evaluation bg: "
+            + str(sum(perf_bg) / len(perf_bg))
+            + " Evaluation fg: "
+            + str(sum(perf_fg) / len(perf_fg))
+        )
     return sum(perf_bg) / len(perf_bg), sum(perf_fg) / len(perf_fg)
