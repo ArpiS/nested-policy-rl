@@ -17,8 +17,10 @@ import tqdm
 
 
 def generate_data(
-    init_experience=100,
+    init_experience_fg=100,
+    init_experience_bg=100,
     bg_only=False,
+    fg_only=False,
     separated=False,
     agent=None,
     dataset="train",
@@ -33,17 +35,30 @@ def generate_data(
         env_fg = MountainCarEnv(group=1, gravity=gravity)
     bg_rollouts = []
     fg_rollouts = []
-    if init_experience > 0:
-        for _ in range(init_experience):
+    if bg_only:
+        for _ in range(init_experience_bg):
             rollout_bg, episode_cost = env_bg.generate_rollout(
                 agent, render=False, group=0, dataset=dataset
             )
             bg_rollouts.extend(rollout_bg)
-            if not bg_only:
-                rollout_fg, episode_cost = env_fg.generate_rollout(
-                    agent, render=False, group=1, dataset=dataset
-                )
-                fg_rollouts.extend(rollout_fg)
+    elif fg_only:
+        for _ in range(init_experience_fg):
+            rollout_fg, episode_cost = env_fg.generate_rollout(
+                agent, render=False, group=1, dataset=dataset
+            )
+            fg_rollouts.extend(rollout_fg)
+    else:
+        for _ in range(init_experience_bg):
+            rollout_bg, episode_cost = env_bg.generate_rollout(
+                agent, render=False, group=0, dataset=dataset
+            )
+            bg_rollouts.extend(rollout_bg)
+        for _ in range(init_experience_fg):
+            rollout_fg, episode_cost = env_fg.generate_rollout(
+                agent, render=False, group=1, dataset=dataset
+            )
+            fg_rollouts.extend(rollout_fg)
+                
     bg_rollouts.extend(fg_rollouts)
     all_rollouts = bg_rollouts.copy()
     if separated:
@@ -57,23 +72,25 @@ def fqi(
     epoch,
     gravity,
     hint_to_goal=True,
-    init_experience=200,
+    init_experience_fg=200,
+    init_experience_bg=200,
     verbose=False,
+    fg_only=False,
     structureless=False,
 ):
     if structureless:
         train_rollouts, train_env_bg, train_env_fg = generate_data(
-            init_experience=init_experience, bg_only=False, structureless=True
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False, structureless=True
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
             init_experience=init_experience, bg_only=False, structureless=True
         )
     else:
         train_rollouts, train_env_bg, train_env_fg = generate_data(
-            init_experience=init_experience, gravity=gravity, bg_only=False
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, gravity=gravity, bg_only=False, fg_only=fg_only
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
-            init_experience=init_experience, gravity=gravity, bg_only=False
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, gravity=gravity, bg_only=False, fg_only=fg_only
         )
 
     if hint_to_goal:
