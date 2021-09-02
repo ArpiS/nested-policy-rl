@@ -53,28 +53,34 @@ class MountainCarEnv(gym.Env):
 
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 30}
 
-    def __init__(self, goal_velocity=0, group=0):
+    def __init__(self, group, gravity, goal_velocity=0):
         self.min_position = -1.2
         self.max_position = 0.6
         self.max_speed = 0.07
         self.goal_position = 0.5
         self.goal_velocity = goal_velocity
         self.state_dim = 2
+        self.gravity = gravity
         
         self.force = 0.001
-        self.gravity = 0.0025
         self.group = group
 
         self.low = np.array([self.min_position, -self.max_speed], dtype=np.float32)
         self.high = np.array([self.max_position, self.max_speed], dtype=np.float32)
 
         self.viewer = None
-        # Render the car
         # Run some of experiments for cartpole
-        if self.group == 1:
-            self.unique_actions = np.array([-4, 5])
-        elif self.group == 0:
-            self.unique_actions = np.array([-2, 3])
+        # Change gravity for group structure
+        # Or change magnitude of force --> start bg/fg high, decrease fg 
+#         if self.group == 0:
+#             self.unique_actions = np.array([-4, 5])
+#         elif self.group == 1:
+#             self.unique_actions = np.array([-3, 4])
+        self.unique_actions = np.array([-4, 5])
+#         if self.group == 0:
+#             self.gravity = 0.0025
+#         elif self.group == 1:
+#             self.gravity = 0.004        
         #self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(self.low, self.high, dtype=np.float32)
 
@@ -110,6 +116,7 @@ class MountainCarEnv(gym.Env):
     def reset(self):
         self.state = np.array([self.np_random.uniform(low=-0.75, high=0.5), 0.0])
         return np.array(self.state)
+    
     def reset_cheat(self):
         self.state = np.array([self.np_random.uniform(low=-0.75, high=0.5), 0.0])
         return np.array(self.state)
