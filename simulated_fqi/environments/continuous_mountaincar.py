@@ -37,7 +37,7 @@ class Continuous_MountainCarEnv(gym.Env):
         self.goal_position = 0.45 # was 0.5 in gym, 0.45 in Arnaud de Broissia's version
         self.goal_velocity = goal_velocity
         self.state_dim = 2
-        self.unique_actions = np.arange(-1, 1 + 1e-5, 0.1)
+        self.unique_actions = np.arange(-1, 1 + 1e-5, 0.5)
         self.group = group
         if group == 0:
             self.power = 0.0015
