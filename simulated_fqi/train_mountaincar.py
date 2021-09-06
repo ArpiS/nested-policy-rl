@@ -71,11 +71,12 @@ def fqi(
     is_contrastive,
     epoch,
     gravity,
-    hint_to_goal=True,
-    init_experience_fg=200,
-    init_experience_bg=200,
+    hint_to_goal=False,
+    init_experience_fg=400,
+    init_experience_bg=400,
     verbose=False,
     fg_only=False,
+    deep=True,
     structureless=False,
 ):
     if structureless:
@@ -83,7 +84,7 @@ def fqi(
             init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False, structureless=True
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
-            init_experience=init_experience, bg_only=False, structureless=True
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False, structureless=True
         )
     else:
         train_rollouts, train_env_bg, train_env_fg = generate_data(
@@ -111,7 +112,7 @@ def fqi(
         goal_target_q_values_fg = torch.FloatTensor(goal_target_q_values_fg)
 
     nfq_net = ContrastiveNFQNetwork(
-        state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive, deep=False
+        state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive, deep=deep
     )
     optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
 
@@ -162,7 +163,7 @@ def fqi(
         fg_success_queue = fg_success_queue[1:]
         fg_success_queue.append(1 if eval_success_fg else 0)
 
-        if sum(bg_success_queue) == 3 and not nfq_net.freeze_shared == True:
+        if (sum(bg_success_queue) == 3 and not nfq_net.freeze_shared == True) or ep == int(epoch*0.75):
             nfq_net.freeze_shared = True
             if verbose:
                 print("FREEZING SHARED")
@@ -194,7 +195,7 @@ def fqi(
                 print("FG Trained")
             break
 
-        if ep % 300 == 0:
+        if ep % 600 == 0:
             perf_bg = []
             perf_fg = []
             for it in range(evaluations):

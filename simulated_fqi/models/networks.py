@@ -56,15 +56,20 @@ class ContrastiveNFQNetwork(nn.Module):
             self.layers_shared = nn.Sequential(
                 nn.Linear(self.state_dim + 1, LAYER_WIDTH),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*2), 
+                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*3), 
+                nonlinearity(),
+                nn.Linear(LAYER_WIDTH*3, LAYER_WIDTH*2),
                 nonlinearity(),
                 nn.Linear(LAYER_WIDTH*2, LAYER_WIDTH),
                 nonlinearity()
+                
             )
             self.layers_fg = nn.Sequential(
                 nn.Linear(self.state_dim + 1, LAYER_WIDTH),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*2),
+                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*3), 
+                nonlinearity(),
+                nn.Linear(LAYER_WIDTH*3, LAYER_WIDTH*2),
                 nonlinearity(),
                 nn.Linear(LAYER_WIDTH*2, LAYER_WIDTH),
                 nonlinearity()
