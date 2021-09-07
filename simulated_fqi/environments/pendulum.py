@@ -28,7 +28,6 @@ class PendulumEnv(gym.Env):
         self.max_steps = max_steps
         self.mode = mode
 
-        self.theta_success_range = 12 * 2 * math.pi / 360
         self.c_trans = 0.01
 
         high = np.array([1.0, 1.0, self.max_speed], dtype=np.float32)
@@ -53,10 +52,12 @@ class PendulumEnv(gym.Env):
         done = False
 
         u = np.clip(u, -self.max_torque, self.max_torque)
+        u += np.random.uniform(-0.1, 0.1) # Adding noise to the action
         if isinstance(u, list):
             u = u[0]
         self.last_u = u  # for rendering
         cost = angle_normalize(th) ** 2 / (np.pi ** 2)
+        
 
         newthdot = (
             thdot
@@ -71,9 +72,8 @@ class PendulumEnv(gym.Env):
         info = {"time_limit": False}
         if self.step_number == self.max_steps:
             info["time_limit"] = True
-        if self.step_number == self.max_steps:
-            done = True
-        return self._get_obs(), cost, done, info
+
+        return self._get_obs(), cost, False, info
 
     def reset(self):
         # if self.mode == "train":
@@ -81,7 +81,7 @@ class PendulumEnv(gym.Env):
         # else:
         # high = np.array([0.2 * np.pi, 1])
         #self.state = self.np_random.uniform(low=-high, high=high)
-        self.state = np.asarray([0, 1])
+        self.state = np.asarray([0, 1]) # Start the pole facing up
         self.last_u = None
         return self._get_obs()
 

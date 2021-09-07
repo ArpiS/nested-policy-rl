@@ -56,15 +56,20 @@ class ContrastiveNFQNetwork(nn.Module):
             self.layers_shared = nn.Sequential(
                 nn.Linear(self.state_dim + 1, LAYER_WIDTH),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*2), 
+                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*3), 
+                nonlinearity(),
+                nn.Linear(LAYER_WIDTH*3, LAYER_WIDTH*2),
                 nonlinearity(),
                 nn.Linear(LAYER_WIDTH*2, LAYER_WIDTH),
                 nonlinearity()
+                
             )
             self.layers_fg = nn.Sequential(
                 nn.Linear(self.state_dim + 1, LAYER_WIDTH),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*2),
+                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*3), 
+                nonlinearity(),
+                nn.Linear(LAYER_WIDTH*3, LAYER_WIDTH*2),
                 nonlinearity(),
                 nn.Linear(LAYER_WIDTH*2, LAYER_WIDTH),
                 nonlinearity()
@@ -90,13 +95,15 @@ class ContrastiveNFQNetwork(nn.Module):
         # Initialize weights to [-0.5, 0.5]
         def init_weights(m):
             if type(m) == nn.Linear:
-                torch.nn.init.uniform_(m.weight, -0.3, 0.3)
+                torch.nn.init.uniform_(m.weight, -0.5, 0.5)
 
         def init_weights_fg(m):
             if type(m) == nn.Linear:
                 torch.nn.init.zeros_(m.weight)
 
         self.layers_shared.apply(init_weights)
+
+        # if self.is_contrastive:
         self.layers_last_shared.apply(init_weights)
         self.layers_fg.apply(init_weights_fg)
         self.layers_last_fg.apply(init_weights_fg)
