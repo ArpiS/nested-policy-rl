@@ -21,7 +21,7 @@ def mean_confidence_interval(data, confidence=0.95):
 
 ##### Class imbalance
 
-with open("../class_imbalance_cfqi.json") as f:
+with open("../mountaincar_class_imbalance_cfqi.json") as f:
     results = json.load(f)
 
 cfqi_bg_success = []
@@ -42,7 +42,8 @@ fg_only_fg_errs = []
 
 fracs = results.keys()
 
-n_reps = 10
+n_reps = 2 #### CHANGE THIS FOR EACH EXPERIMENT
+
 n_reps_per_condition = n_reps // 2
 
 bg_performance_array = np.zeros((n_reps_per_condition, len(fracs)))
@@ -63,13 +64,15 @@ for frac_ii, i in enumerate(fracs):
     fg_only_fg_perf = []
     for key in results[str(i)]["cfqi"]:
         cfqi_bg_perf.extend(results[str(i)]["cfqi"][key][:n_reps_per_condition])
+        # import ipdb; ipdb.set_trace()
         cfqi_fg_perf.extend(results[str(i)]["cfqi"][key][n_reps_per_condition:])
 
         method_list.extend(["CFQI" for _ in range(n_reps)])
         condition_list.extend(["Background" for _ in range(n_reps_per_condition)])
         condition_list.extend(["Foreground" for _ in range(n_reps_per_condition)])
         fraction_list.extend([round(float(i), 1) for _ in range(n_reps)])
-        steps_list.extend(results[str(i)]["cfqi"][key])
+        new_steps = np.concatenate([results[str(i)]["cfqi"][key] for _ in range(n_reps_per_condition)])
+        steps_list.extend(new_steps)
 
     for key in results[str(i)]["fqi_joint"]:
         fqi_joint_bg_perf.extend(
@@ -83,7 +86,8 @@ for frac_ii, i in enumerate(fracs):
         condition_list.extend(["Background" for _ in range(n_reps_per_condition)])
         condition_list.extend(["Foreground" for _ in range(n_reps_per_condition)])
         fraction_list.extend([round(float(i), 1) for _ in range(n_reps)])
-        steps_list.extend(results[str(i)]["fqi_joint"][key])
+        new_steps = np.concatenate([results[str(i)]["fqi_joint"][key] for _ in range(n_reps_per_condition)])
+        steps_list.extend(new_steps)
 
     for key in results[str(i)]["fg_only"]:
         fg_only_bg_perf.extend(results[str(i)]["fg_only"][key][:n_reps_per_condition])
@@ -93,7 +97,9 @@ for frac_ii, i in enumerate(fracs):
         condition_list.extend(["Background" for _ in range(n_reps_per_condition)])
         condition_list.extend(["Foreground" for _ in range(n_reps_per_condition)])
         fraction_list.extend([round(float(i), 1) for _ in range(n_reps)])
-        steps_list.extend(results[str(i)]["fg_only"][key])
+        new_steps = np.concatenate([results[str(i)]["fg_only"][key] for _ in range(n_reps_per_condition)])
+        steps_list.extend(new_steps)
+
 
     cfqi_bg_success.append(np.mean(cfqi_bg_perf))
     fqi_joint_bg_success.append(np.mean(fqi_joint_bg_perf))
@@ -117,6 +123,7 @@ for frac_ii, i in enumerate(fracs):
     m, h = mean_confidence_interval(fg_only_fg_perf)
     fg_only_fg_errs.append(h)
 
+# import ipdb; ipdb.set_trace()
 results_df = pd.DataFrame(
     {
         "Method": method_list,
@@ -127,6 +134,7 @@ results_df = pd.DataFrame(
 )
 
 plt.figure(figsize=(12, 6))
+
 sns.lineplot(
     data=results_df,
     x="fraction_fg",
@@ -141,7 +149,7 @@ plt.ylabel("Steps survived")
 plt.title("Performance with imbalanced datasets")
 plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)  # , fontsize=15)
 plt.tight_layout()
-plt.savefig("../plots/class_imbalance.pdf")
+plt.savefig("../plots/mountaincar_class_imbalance.png")
 plt.show()
 import ipdb
 
