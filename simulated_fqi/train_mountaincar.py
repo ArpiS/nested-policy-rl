@@ -246,7 +246,7 @@ def fqi(
     return sum(perf_bg) / len(perf_bg), sum(perf_fg) / len(perf_fg)
 
 
-def warm_start(epoch, gravity, init_experience=200, verbose=False, structureless=False):
+def warm_start(epoch, gravity, init_experience_fg=400, init_experience_bg=400, verbose=False, structureless=False):
     if structureless:
         (
             train_rollouts,
@@ -255,13 +255,13 @@ def warm_start(epoch, gravity, init_experience=200, verbose=False, structureless
             train_env_bg,
             train_env_fg,
         ) = generate_data(
-            init_experience=init_experience,
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg,
             bg_only=False,
             separated=True,
             structureless=True,
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
-            init_experience=init_experience, bg_only=False, structureless=True
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False, structureless=True
         )
     else:
         (
@@ -271,13 +271,13 @@ def warm_start(epoch, gravity, init_experience=200, verbose=False, structureless
             train_env_bg,
             train_env_fg,
         ) = generate_data(
-            init_experience=init_experience,
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg,
             bg_only=False,
             separated=True,
             gravity=gravity,
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
-            init_experience=init_experience, bg_only=False
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False
         )
     bg_success_queue = [0] * 3
     fg_success_queue = [0] * 3
@@ -372,7 +372,7 @@ def warm_start(epoch, gravity, init_experience=200, verbose=False, structureless
 
 
 def transfer_learning(
-    epoch, gravity, init_experience=200, verbose=False, structureless=False
+    epoch, gravity, init_experience_fg=400, init_experience_bg=400, verbose=False, structureless=False
 ):
     if structureless:
         (
@@ -382,13 +382,13 @@ def transfer_learning(
             train_env_bg,
             train_env_fg,
         ) = generate_data(
-            init_experience=init_experience,
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg,
             bg_only=False,
             separated=True,
             structureless=True,
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
-            init_experience=init_experience, bg_only=False, structureless=True
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False, structureless=True
         )
     else:
         (
@@ -398,13 +398,13 @@ def transfer_learning(
             train_env_bg,
             train_env_fg,
         ) = generate_data(
-            init_experience=init_experience,
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg,
             gravity=gravity,
             bg_only=False,
             separated=True,
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
-            init_experience=init_experience, bg_only=False
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False
         )
     bg_success_queue = [0] * 3
 
