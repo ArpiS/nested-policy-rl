@@ -47,16 +47,16 @@ class ContrastiveNFQNetwork(nn.Module):
     def __init__(self, state_dim, is_contrastive: bool = True, nonlinearity=nn.Sigmoid, deep=False):
         super().__init__()
         self.state_dim = state_dim
-        LAYER_WIDTH = self.state_dim + 1
+        LAYER_WIDTH = self.state_dim + 2 # Account for OH
         self.is_contrastive = is_contrastive
         self.freeze_shared = False
         self.freeze_fg = False
         
         if deep:
             self.layers_shared = nn.Sequential(
-                nn.Linear(self.state_dim + 1, LAYER_WIDTH),
+                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*2),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*3), 
+                nn.Linear(LAYER_WIDTH*2, LAYER_WIDTH*3),
                 nonlinearity(),
                 nn.Linear(LAYER_WIDTH*3, LAYER_WIDTH*2),
                 nonlinearity(),
@@ -65,9 +65,9 @@ class ContrastiveNFQNetwork(nn.Module):
                 
             )
             self.layers_fg = nn.Sequential(
-                nn.Linear(self.state_dim + 1, LAYER_WIDTH),
+                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*2),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*3), 
+                nn.Linear(LAYER_WIDTH*2, LAYER_WIDTH*3),
                 nonlinearity(),
                 nn.Linear(LAYER_WIDTH*3, LAYER_WIDTH*2),
                 nonlinearity(),
@@ -76,15 +76,15 @@ class ContrastiveNFQNetwork(nn.Module):
             )
         else:
             self.layers_shared = nn.Sequential(
-                nn.Linear(self.state_dim + 1, LAYER_WIDTH),
+                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*2),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
+                nn.Linear(LAYER_WIDTH*2, LAYER_WIDTH),
                 nonlinearity()
             )
             self.layers_fg = nn.Sequential(
-                nn.Linear(self.state_dim + 1, LAYER_WIDTH),
+                nn.Linear(LAYER_WIDTH, LAYER_WIDTH*2),
                 nonlinearity(),
-                nn.Linear(LAYER_WIDTH, LAYER_WIDTH),
+                nn.Linear(LAYER_WIDTH*2, LAYER_WIDTH),
                 nonlinearity()
             )
         self.layers_last_shared = nn.Sequential(

@@ -76,7 +76,8 @@ class MountainCarEnv(gym.Env):
 #             self.unique_actions = np.array([-4, 5])
 #         elif self.group == 1:
 #             self.unique_actions = np.array([-3, 4])
-        self.unique_actions = np.array([-4, 5])
+        self.unique_actions = np.array([-3, 1, 4])
+        self.unique_oh_actions = np.array([[1, 0], [0, 0], [0, 1]])
 #         if self.group == 0:
 #             self.gravity = 0.0025
 #         elif self.group == 1:
@@ -95,7 +96,7 @@ class MountainCarEnv(gym.Env):
         #    action,
         #    type(action),
         #)
-
+        action = self.oh_to_a(action)
         position, velocity = self.state
         velocity += (action - 1) * self.force + math.cos(3 * position) * (-self.gravity)
         velocity = np.clip(velocity, -self.max_speed, self.max_speed)
@@ -114,10 +115,6 @@ class MountainCarEnv(gym.Env):
         return np.array(self.state), reward, done, {}
 
     def reset(self):
-        self.state = np.array([self.np_random.uniform(low=-0.75, high=0.5), 0.0])
-        return np.array(self.state)
-    
-    def reset_cheat(self):
         self.state = np.array([self.np_random.uniform(low=-0.75, high=0.5), 0.0])
         return np.array(self.state)
 
@@ -140,7 +137,8 @@ class MountainCarEnv(gym.Env):
                 [
                     np.random.uniform(0.5, 0.55),
                     np.random.uniform(self.goal_velocity, self.goal_velocity + 0.1),
-                    np.random.choice([4, -4])
+                    np.random.choice([0, 1]),
+                    np.random.choice([0, 1])
                 ]
             )
             for _ in range(size)
@@ -221,6 +219,22 @@ class MountainCarEnv(gym.Env):
         if self.viewer:
             self.viewer.close()
             self.viewer = None
+
+    def a_to_oh(self, a):
+        if a == 4:
+            return [0, 1]
+        elif a == 1:
+            return [0, 0]
+        elif a == -3:
+            return [1, 0]
+
+    def oh_to_a(self, oh):
+        if list(oh) == [0, 1]:
+            return 4
+        elif list(oh) == [0, 0]:
+            return 1
+        elif list(oh) == [1, 0]:
+            return -3
     
     def generate_rollout(
         self,
@@ -247,17 +261,15 @@ class MountainCarEnv(gym.Env):
         rollout = []
         episode_cost = 0
 
-        if dataset == 'train':
-            obs = self.reset_cheat()
-        else:
-            obs = self.reset()
+        obs = self.reset()
 
         info = {"time_limit": False}
         for ii in range(rollout_length):
             if agent is not None:
-                action = agent.get_best_action(obs, self.unique_actions, group)
+                action = agent.get_best_action(obs, self.unique_oh_actions, group)
             else:
                 action = np.random.choice(self.unique_actions)
+                action = self.a_to_oh(action)
             next_obs, cost, done, info = self.step(action)
             rollout.append(
                 (obs.squeeze(), action, cost, next_obs.squeeze(), done, group)

@@ -63,7 +63,7 @@ class NFQAgent:
                     q_list[ii] = x_shared + x_fg
             else:
                 q_list[ii] = self._nfq_net(
-                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0),
+                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor(a)], dim=0),
                     group * torch.ones(1),
                 )
 
@@ -93,7 +93,6 @@ class NFQAgent:
         """
         # _b denotes batch
         state_b, action_b, cost_b, next_state_b, done_b, group_b = zip(*rollouts)
-        # import ipdb; ipdb.set_trace()
         state_b = torch.FloatTensor(state_b)
         action_b = torch.FloatTensor(action_b)
         cost_b = torch.FloatTensor(cost_b)
@@ -107,16 +106,23 @@ class NFQAgent:
             action_b = action_b.unsqueeze(1)
 
         state_action_b = torch.cat([state_b, action_b], 1)
-        assert state_action_b.shape == (len(rollouts), state_b.shape[1] + 1)
+        assert state_action_b.shape == (len(rollouts), state_b.shape[1] + 2) # Account for OH encoding
 
         # Compute min_a Q(s', a)
-        q_next_state_left_b = self._nfq_net(
-            torch.cat([next_state_b, torch.zeros(len(rollouts), 1)], 1), group_b
-        ).squeeze()
-        q_next_state_right_b = self._nfq_net(
-            torch.cat([next_state_b, torch.ones(len(rollouts), 1)], 1), group_b
-        ).squeeze()
+        #import ipdb; ipdb.set_trace()
+        # q_next_state_left_b = self._nfq_net(
+        #     torch.cat([next_state_b, torch.zeros(len(rollouts), 1)], 1), group_b
+        # ).squeeze()
+        # q_next_state_right_b = self._nfq_net(
+        #     torch.cat([next_state_b, torch.ones(len(rollouts), 1)], 1), group_b
+        # ).squeeze()
+        #
+        # q_next_state_b = torch.min(q_next_state_left_b, q_next_state_right_b)
 
+        left_action = torch.FloatTensor(np.stack([[1, 0] for _ in range(len(rollouts))], axis=0))
+        right_action = torch.FloatTensor(np.stack([[0, 1] for _ in range(len(rollouts))], axis=0))
+        q_next_state_left_b = self._nfq_net(torch.cat([next_state_b, left_action], 1), group_b).squeeze()
+        q_next_state_right_b = self._nfq_net(torch.cat([next_state_b, right_action], 1), group_b).squeeze()
         q_next_state_b = torch.min(q_next_state_left_b, q_next_state_right_b)
 
         # If goal state (S+): target = 0 + gamma * min Q
@@ -276,10 +282,10 @@ class NFQAgent:
         obs = eval_env.reset()
         done = False
         episode_cost = 0
-        step_limit = 100
+        step_limit = 200
         it = 0
         while not done and it < step_limit:
-            action = self.get_best_action(obs, eval_env.unique_actions, eval_env.group)
+            action = self.get_best_action(obs, eval_env.unique_oh_actions, eval_env.group)
             obs, cost, done, info = eval_env.step(action)
             episode_cost += cost
 

@@ -15,6 +15,23 @@ import itertools
 import seaborn as sns
 import tqdm
 
+# TODO: Make sure that all params are used for non-contrastive
+def get_rollouts(env_bg, env_fg, init_experience=5, agent=None):
+    bg_rollouts = []
+    fg_rollouts = []
+    if init_experience > 0:
+        for _ in range(init_experience):
+            rollout_bg, episode_cost = env_bg.generate_rollout(
+                agent, render=False, group=0
+            )
+            rollout_fg, episode_cost = env_fg.generate_rollout(
+                agent, render=False, group=1
+            )
+            bg_rollouts.extend(rollout_bg)
+            fg_rollouts.extend(rollout_fg)
+    bg_rollouts.extend(fg_rollouts)
+    all_rollouts = bg_rollouts.copy()
+    return all_rollouts
 
 def generate_data(
     init_experience_fg=100,
@@ -25,8 +42,57 @@ def generate_data(
     agent=None,
     dataset="train",
     structureless=False,
+    initialize_model=False,
     gravity=0.004,
 ):
+    if initialize_model:
+        env_bg = MountainCarEnv(group=0, gravity=0.0025)
+        eval_env_bg = MountainCarEnv(group=0, gravity=0.0025)
+        env_fg = MountainCarEnv(group=1, gravity=gravity)
+        eval_env_fg = MountainCarEnv(group=1, gravity=gravity)
+
+        nfq_net = ContrastiveNFQNetwork(state_dim=env_bg.state_dim, is_contrastive=False)
+        optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
+        nfq_agent = NFQAgent(nfq_net, optimizer)
+        bg_success_queue = [0] * 3
+        fg_success_queue = [0] * 3
+        epochs = 1000
+
+        rollouts = []
+
+        for k, epoch in enumerate(tqdm.tqdm(range(epochs))):
+            all_rollouts = get_rollouts(env_bg, env_fg, agent=nfq_agent)
+            rollouts.extend(all_rollouts)
+            state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(
+                rollouts
+            )
+            loss = nfq_agent.train((state_action_b, target_q_values, groups))
+
+            (
+                eval_episode_length_bg,
+                eval_success_bg,
+                eval_episode_cost_bg,
+            ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+            (
+                eval_episode_length_fg,
+                eval_success_fg,
+                eval_episode_cost_fg,
+            ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+
+            bg_success_queue = bg_success_queue[1:]
+            bg_success_queue.append(1 if eval_success_bg else 0)
+
+            fg_success_queue = fg_success_queue[1:]
+            fg_success_queue.append(1 if eval_success_fg else 0)
+
+            if sum(bg_success_queue) == 3 and not nfq_net.freeze_shared:
+                nfq_net.freeze_shared = True
+                print("FREEZING SHARED")
+
+            if sum(fg_success_queue) == 3 and nfq_net.freeze_shared:
+                break
+        return rollouts, env_bg, eval_env_bg
+
     if structureless:
         env_bg = MountainCarEnv(group=0, gravity=0.0025)
         env_fg = MountainCarEnv(group=1, gravity=0.0025)
@@ -78,17 +144,21 @@ def fqi(
     fg_only=False,
     deep=True,
     structureless=False,
+    initialize_model=False,
+    render = False
 ):
     if structureless:
         train_rollouts, train_env_bg, train_env_fg = generate_data(
-            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False, structureless=True
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False, structureless=True,
+            initialize_model=initialize_model
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
             init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, bg_only=False, structureless=True
         )
     else:
         train_rollouts, train_env_bg, train_env_fg = generate_data(
-            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, gravity=gravity, bg_only=False, fg_only=fg_only
+            init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, gravity=gravity, bg_only=False, fg_only=fg_only,
+            initialize_model=initialize_model
         )
         test_rollouts, eval_env_bg, eval_env_fg = generate_data(
             init_experience_fg=init_experience_fg, init_experience_bg=init_experience_bg, gravity=gravity, bg_only=False, fg_only=fg_only
@@ -114,14 +184,14 @@ def fqi(
     nfq_net = ContrastiveNFQNetwork(
         state_dim=train_env_bg.state_dim, is_contrastive=is_contrastive, deep=deep
     )
-    optimizer = optim.Adam(nfq_net.parameters(), lr=1e-1)
+    optimizer = optim.Adam(nfq_net.parameters(), lr=1e-2)
 
     nfq_agent = NFQAgent(nfq_net, optimizer)
 
     bg_success_queue = [0] * 3
     fg_success_queue = [0] * 3
-    eval_fg = 0
     evaluations = 5
+    losses = []
     for k, ep in enumerate(tqdm.tqdm(range(epoch + 1))):
         state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(
             train_rollouts
@@ -138,20 +208,15 @@ def fqi(
             goal_groups = torch.cat([group_bg, group_fg], dim=0)
             groups = torch.cat([groups, goal_groups], dim=0)
 
-        if not nfq_net.freeze_shared:
-            loss = nfq_agent.train((state_action_b, target_q_values, groups))
+        loss = nfq_agent.train((state_action_b, target_q_values, groups))
+        losses.append(loss)
 
-        eval_episode_length_fg, eval_success_fg, eval_episode_cost_fg = 0, 0, 0
-        if nfq_net.freeze_shared:
-            eval_fg += 1
-            if eval_fg > 50:
-                loss = nfq_agent.train((state_action_b, target_q_values, groups))
 
         (
             eval_episode_length_bg,
             eval_success_bg,
             eval_episode_cost_bg,
-        ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+        ) = nfq_agent.evaluate_car(eval_env_bg, render=render)
         bg_success_queue = bg_success_queue[1:]
         bg_success_queue.append(1 if eval_success_bg else 0)
 
@@ -159,7 +224,7 @@ def fqi(
             eval_episode_length_fg,
             eval_success_fg,
             eval_episode_cost_fg,
-        ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+        ) = nfq_agent.evaluate_car(eval_env_fg, render=render)
         fg_success_queue = fg_success_queue[1:]
         fg_success_queue.append(1 if eval_success_fg else 0)
 
@@ -203,12 +268,12 @@ def fqi(
                     eval_episode_length_bg,
                     eval_success_bg,
                     eval_episode_cost_bg,
-                ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+                ) = nfq_agent.evaluate_car(eval_env_bg, render=render)
                 (
                     eval_episode_length_fg,
                     eval_success_fg,
                     eval_episode_cost_fg,
-                ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+                ) = nfq_agent.evaluate_car(eval_env_fg, render=render)
                 perf_bg.append(eval_episode_cost_bg)
                 perf_fg.append(eval_episode_cost_fg)
                 train_env_bg.close()
@@ -226,12 +291,12 @@ def fqi(
             eval_episode_length_bg,
             eval_success_bg,
             eval_episode_cost_bg,
-        ) = nfq_agent.evaluate_car(eval_env_bg, render=False)
+        ) = nfq_agent.evaluate_car(eval_env_bg, render=render)
         (
             eval_episode_length_fg,
             eval_success_fg,
             eval_episode_cost_fg,
-        ) = nfq_agent.evaluate_car(eval_env_fg, render=False)
+        ) = nfq_agent.evaluate_car(eval_env_fg, render=render)
         perf_bg.append(eval_episode_cost_bg)
         perf_fg.append(eval_episode_cost_fg)
         eval_env_bg.close()
@@ -243,6 +308,7 @@ def fqi(
             + " Evaluation fg: "
             + str(sum(perf_fg) / len(perf_fg))
         )
+    sns.distplot(losses)
     return sum(perf_bg) / len(perf_bg), sum(perf_fg) / len(perf_fg)
 
 
