@@ -62,6 +62,7 @@ class NFQAgent:
                     x_fg = self._nfq_net.layers_last_fg(x_fg)
                     q_list[ii] = x_shared + x_fg
             else:
+                import ipdb; ipdb.set_trace()
                 q_list[ii] = self._nfq_net(
                     torch.cat([torch.FloatTensor(obs), torch.FloatTensor(a)], dim=0),
                     group * torch.ones(1),
@@ -106,24 +107,24 @@ class NFQAgent:
             action_b = action_b.unsqueeze(1)
 
         state_action_b = torch.cat([state_b, action_b], 1)
-        assert state_action_b.shape == (len(rollouts), state_b.shape[1] + 2) # Account for OH encoding
+        #assert state_action_b.shape == (len(rollouts), state_b.shape[1] + 2) # Account for OH encoding
 
         # Compute min_a Q(s', a)
         #import ipdb; ipdb.set_trace()
-        # q_next_state_left_b = self._nfq_net(
-        #     torch.cat([next_state_b, torch.zeros(len(rollouts), 1)], 1), group_b
-        # ).squeeze()
-        # q_next_state_right_b = self._nfq_net(
-        #     torch.cat([next_state_b, torch.ones(len(rollouts), 1)], 1), group_b
-        # ).squeeze()
-        #
-        # q_next_state_b = torch.min(q_next_state_left_b, q_next_state_right_b)
-
-        left_action = torch.FloatTensor(np.stack([[1, 0] for _ in range(len(rollouts))], axis=0))
-        right_action = torch.FloatTensor(np.stack([[0, 1] for _ in range(len(rollouts))], axis=0))
-        q_next_state_left_b = self._nfq_net(torch.cat([next_state_b, left_action], 1), group_b).squeeze()
-        q_next_state_right_b = self._nfq_net(torch.cat([next_state_b, right_action], 1), group_b).squeeze()
+        q_next_state_left_b = self._nfq_net(
+            torch.cat([next_state_b, torch.zeros(len(rollouts), 1)], 1), group_b
+        ).squeeze()
+        q_next_state_right_b = self._nfq_net(
+            torch.cat([next_state_b, torch.ones(len(rollouts), 1)], 1), group_b
+        ).squeeze()
+        
         q_next_state_b = torch.min(q_next_state_left_b, q_next_state_right_b)
+
+#         left_action = torch.FloatTensor(np.stack([[1, 0] for _ in range(len(rollouts))], axis=0))
+#         right_action = torch.FloatTensor(np.stack([[0, 1] for _ in range(len(rollouts))], axis=0))
+#         q_next_state_left_b = self._nfq_net(torch.cat([next_state_b, left_action], 1), group_b).squeeze()
+#         q_next_state_right_b = self._nfq_net(torch.cat([next_state_b, right_action], 1), group_b).squeeze()
+#         q_next_state_b = torch.min(q_next_state_left_b, q_next_state_right_b)
 
         # If goal state (S+): target = 0 + gamma * min Q
         # If forbidden state (S-): target = 1

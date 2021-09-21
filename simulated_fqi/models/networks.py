@@ -47,7 +47,8 @@ class ContrastiveNFQNetwork(nn.Module):
     def __init__(self, state_dim, is_contrastive: bool = True, nonlinearity=nn.Sigmoid, deep=False):
         super().__init__()
         self.state_dim = state_dim
-        LAYER_WIDTH = self.state_dim + 2 # Account for OH
+#         LAYER_WIDTH = self.state_dim + 2 # Account for OH
+        LAYER_WIDTH = self.state_dim + 1
         self.is_contrastive = is_contrastive
         self.freeze_shared = False
         self.freeze_fg = False
