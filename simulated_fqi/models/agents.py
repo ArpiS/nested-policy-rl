@@ -62,9 +62,8 @@ class NFQAgent:
                     x_fg = self._nfq_net.layers_last_fg(x_fg)
                     q_list[ii] = x_shared + x_fg
             else:
-                import ipdb; ipdb.set_trace()
                 q_list[ii] = self._nfq_net(
-                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor(a)], dim=0),
+                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0),
                     group * torch.ones(1),
                 )
 

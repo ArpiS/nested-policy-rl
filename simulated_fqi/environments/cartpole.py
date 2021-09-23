@@ -75,7 +75,10 @@ class CartPoleRegulatorEnv(gym.Env):
         self.unique_actions = np.array([0, 1])
         self.group = group
         self.state_dim = 4
-        self.force_left = force_left
+        if self.group == 1:
+            self.force_left = force_left
+        else:
+            self.force_left = 0
         self.save_gif = False
         self.is_contrastive = is_contrastive
         self.fg_only = fg_only
@@ -128,8 +131,7 @@ class CartPoleRegulatorEnv(gym.Env):
         # else:
         #     force = self.force_mag if action == 1 else -self.force_mag
 
-        if self.group == 1 or self.fg_only:
-            force -= self.force_left
+        force -= self.force_left
 
         costheta = math.cos(theta)
         sintheta = math.sin(theta)
