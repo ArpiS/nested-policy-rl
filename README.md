@@ -1,4 +1,4 @@
-# Nested policy fitted Q-iteration: off-policy reinforcement learning for case-control environments
+# Nested policy fitted Q-iteration: off-policy reinforcement learning for nested environments
 ![Build Status](https://github.com/bee-hive/contrastive-rl/actions/workflows/crl_workflow.yml/badge.svg)
 
 This repository is the official implementation of [Nested Policy Reinforcement Learning](https://arxiv.org/abs/2110.02879).
@@ -17,7 +17,7 @@ In this repository, we demonstrate how to reproduce results on an OpenAI gym env
 
 ## Training
 
-All of the algorithms in this paper are available in simulated_fqi/train.py. To run each of the algorithms (CFQI, FQI, Warm Start, Transfer Learning):
+All of the algorithms in this paper are available in simulated_fqi/train.py. To run each of the algorithms (CFQI, FQI, Transfer Learning):
 
 ```train
 python train.py fqi
