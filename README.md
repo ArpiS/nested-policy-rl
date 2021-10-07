@@ -1,9 +1,9 @@
-# Contrastive fitted Q-iteration: off-policy reinforcement learning for case-control environments
+# Nested policy fitted Q-iteration: off-policy reinforcement learning for case-control environments
 ![Build Status](https://github.com/bee-hive/contrastive-rl/actions/workflows/crl_workflow.yml/badge.svg)
 
-This repository is the official implementation of [Contrastive fitted Q-iteration: off-policy reinforcement learning for case-control environments](https://neurips.cc/).
+This repository is the official implementation of [Nested Policy Reinforcement Learning](https://arxiv.org/abs/2110.02879).
 
-Off-policy reinforcement learning (RL) has proven to be a powerful framework for guiding agents' actions in environments with stochastic rewards and unknown or noisy state dynamics. In many real-world settings, these agents are acting in distinct types of environments, each of whose dynamics differ slightly. For example, we may be interested in developing policies guiding medical treatment for patients with and without a given disease, or policies to navigate curriculum design for students with and without a learning disability. Here, we introduce contrastive fitted Q-iteration (CFQI), an off-policy RL framework that finds optimal policies in environments that exhibit this case-control structure. Our approach develops a contrastive Q-value function that leverages the shared structure between the two groups while allowing their policies to be distinct from one another. We find that CFQI yields a policy that relies on relevant features to make predictions; it also performs at least as well as a policy that does not consider group structure, and often much better because of a closer fit to the environments. Furthermore, CFQI is robust to imbalance in group sample sizes and outperforms other bespoke approaches for similar tasks, including warm start and transfer learning methods. We demonstrate the performance of CFQI using an OpenAI Gym environment and a clinical decision-making RL task.
+Off-policy reinforcement learning (RL) has proven to be a powerful framework for guiding agents' actions in environments with stochastic rewards and unknown or noisy state dynamics. In many real-world settings, these agents must operate in multiple environments, each with slightly different dynamics. For example, we may be interested in developing policies to guide medical treatment for patients with and without a given disease, or policies to navigate curriculum design for students with and without a learning disability. Here, we introduce nested policy fitted Q-iteration (NFQI), an RL framework that finds optimal policies in environments that exhibit such a structure. Our approach develops a nested Q-value function that takes advantage of the shared structure between two groups of observations from two separate environments while allowing their policies to be distinct from one another. We find that NFQI yields policies that rely on relevant features and perform at least as well as a policy that does not consider group structure. We demonstrate NFQI's performance using an OpenAI Gym environment and a clinical decision making RL task. Our results suggest that NFQI can develop policies that are better suited to many real-world clinical environments.
 
 ## Requirements
 
@@ -22,7 +22,6 @@ All of the algorithms in this paper are available in simulated_fqi/train.py. To 
 ```train
 python train.py fqi
 python train.py cfqi
-python train.py warm_start
 python train.py transfer_learning
 ```
 
@@ -58,16 +57,6 @@ As an example of our results, we show the outcome of the "cumulative reward" exp
   <img src="simulated_fqi/plots/bg_force_v_performance.png" width="400" />
   <img src="simulated_fqi/plots/fg_force_v_performance.png" width="400" />
 </p>
-
-<!-- Our model achieves the following performance on :
-
-### [Image Classification on ImageNet](https://paperswithcode.com/sota/image-classification-on-imagenet)
-
-| Model name         | Top 1 Accuracy  | Top 5 Accuracy |
-| ------------------ |---------------- | -------------- |
-| My awesome model   |     85%         |      95%       |
-
->📋  Include a table of results from your paper, and link back to the leaderboard for clarity and context. If your main result is a figure, include that figure and link to the command or notebook to reproduce it. -->
 
 
 ## Contributing
