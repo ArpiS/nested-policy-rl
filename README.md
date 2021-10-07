@@ -62,4 +62,4 @@ As an example of our results, we show the outcome of the "cumulative reward" exp
 ## Contributing
 
 We include an MIT license. If you would like to contribute to this repository, create a branch and merge with a pull request to the original authors.
-If you have questions, please contact the authors (email).
+If you have questions, please contact the authors (aishwarya@princeton.edu).
