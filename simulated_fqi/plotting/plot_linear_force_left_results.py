@@ -51,6 +51,9 @@ with open("../force_left_v_performance.json") as f:
 
 with open("../linear_model_force_range.json") as f:
     results_linear = json.load(f)
+    
+with open("force_left_v_performance_gfqi.json") as f:
+    results_gfqi = json.load(f)
 
 # import ipdb; ipdb.set_trace()
 def mean_confidence_interval(data, confidence=0.95):
@@ -67,11 +70,13 @@ def plot_performance(results, ds="bg", figname=""):
     w_success = []
     t_success = []
     l_success = []
+    g_success = []
     c_errs = []
     f_errs = []
     w_errs = []
     t_errs = []
     l_errs = []
+    g_errs = []
     if ds == "bg":
         ind = 1
     else:
@@ -82,6 +87,7 @@ def plot_performance(results, ds="bg", figname=""):
         ws_perf = []
         tl_perf = []
         linear_perf = []
+        gfqi_perf = []
         for key in results[str(i)]["fqi"]:
             fqi_perf.extend(results[str(i)]["fqi"][key][ind])
         for key in results[str(i)]["cfqi"]:
@@ -92,11 +98,14 @@ def plot_performance(results, ds="bg", figname=""):
             tl_perf.extend(results[str(i)]["tl"][key][ind])
         for key in results[str(i)]["cfqi"]:
             linear_perf.extend(results_linear[str(i)]["cfqi"][key][ind])
+        for key in results_gfqi[str(i)]["gfqi"]:
+            gfqi_perf.extend(results_gfqi[str(i)]["gfqi"][key][ind])
         c_success.append(np.mean(cfqi_perf))
         f_success.append(np.mean(fqi_perf))
         w_success.append(np.mean(ws_perf))
         t_success.append(np.mean(tl_perf))
         l_success.append(np.mean(linear_perf))
+        g_success.append(np.mean(gfqi_perf))
         m, h = mean_confidence_interval(cfqi_perf)
         c_errs.append(h)
         m, h = mean_confidence_interval(fqi_perf)
@@ -107,6 +116,8 @@ def plot_performance(results, ds="bg", figname=""):
         t_errs.append(h)
         m, h = mean_confidence_interval(linear_perf)
         l_errs.append(h)
+        m, h = mean_confidence_interval(gfqi_perf)
+        g_errs.append(h)
     x = [k for k in range(0, 11)]
     plt.figure(figsize=(10, 6))
     sns.scatterplot(x, c_success, label="CFQI")
@@ -119,6 +130,9 @@ def plot_performance(results, ds="bg", figname=""):
     plt.errorbar(x, t_success, yerr=t_errs, linestyle="None")
     sns.scatterplot(x, l_success, label="Linear CFQI")
     plt.errorbar(x, l_success, yerr=l_errs, linestyle="None")
+    sns.scatterplot(x, g_success, label="FQI with access to group label")
+    plt.errorbar(x, g_success, yerr=g_errs, linestyle="None")
+    
     plt.legend(prop={"size": 12})
     if ds == "bg":
         # plt.title("Background Dataset: Performance of CFQI, FQI, Warm Start, Transfer Learning when force on cart is modified")
@@ -135,9 +149,9 @@ def plot_performance(results, ds="bg", figname=""):
 # plt.figure(figsize=(24, 8))
 # plt.suptitle("Performance when force on cart is modified")
 # plt.subplot(121)
-plot_performance(results, ds="bg", figname="../plots/bg_force_v_performance_linear.png")
+plot_performance(results, ds="bg", figname="bg_force_v_performance_linear_gfqi.png")
 # plt.subplot(122)
-plot_performance(results, ds="fg", figname="../plots/fg_force_v_performance_linear.png")
+plot_performance(results, ds="fg", figname="fg_force_v_performance_linear_gfqi.png")
 # plt.tight_layout()
 # plt.savefig("./plots/force_v_performance.png")
 # plt.show()
