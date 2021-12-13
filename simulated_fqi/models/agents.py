@@ -36,6 +36,7 @@ class NFQAgent:
         action : int
             The action chosen by greedy selection.
         """
+        concatenate_group=True
         q_list = np.zeros(len(unique_actions))
         for ii, a in enumerate(unique_actions):
 
@@ -62,10 +63,16 @@ class NFQAgent:
                     x_fg = self._nfq_net.layers_last_fg(x_fg)
                     q_list[ii] = x_shared + x_fg
             else:
-                q_list[ii] = self._nfq_net(
-                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0),
+                if concatenate_group:
+                    q_list[ii] = self._nfq_net(
+                    torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a]), group*torch.ones(1)], dim=0),
                     group * torch.ones(1),
-                )
+                    )
+                else:
+                    q_list[ii] = self._nfq_net(
+                        torch.cat([torch.FloatTensor(obs), torch.FloatTensor([a])], dim=0),
+                        group * torch.ones(1),
+                    )
 
         # plt.plot(q_list)
         # plt.show()
@@ -77,7 +84,8 @@ class NFQAgent:
         self,
         rollouts: List[Tuple[np.array, int, int, np.array, bool]],
         gamma: float = 0.95,
-        reward_weights=np.asarray([0.1] * 5),
+        reward_weights=np.asarray([0.1] * 5), 
+        concatenate_group=False
     ):
         """Generate pattern set.
         Parameters
@@ -107,14 +115,20 @@ class NFQAgent:
 
         state_action_b = torch.cat([state_b, action_b], 1)
         #assert state_action_b.shape == (len(rollouts), state_b.shape[1] + 2) # Account for OH encoding
-
+        if concatenate_group:
+            state_action_b = torch.cat([state_action_b, group_b], 1)
         # Compute min_a Q(s', a)
         #import ipdb; ipdb.set_trace()
+        next_state_left = torch.cat([next_state_b, torch.zeros(len(rollouts), 1)], 1)
+        next_state_right = torch.cat([next_state_b, torch.ones(len(rollouts), 1)], 1)
+        if concatenate_group:
+            next_state_left = torch.cat([next_state_b, torch.zeros(len(rollouts), 1), group_b], 1)
+            next_state_right = torch.cat([next_state_b, torch.ones(len(rollouts), 1), group_b], 1)
         q_next_state_left_b = self._nfq_net(
-            torch.cat([next_state_b, torch.zeros(len(rollouts), 1)], 1), group_b
+            next_state_left, group_b
         ).squeeze()
         q_next_state_right_b = self._nfq_net(
-            torch.cat([next_state_b, torch.ones(len(rollouts), 1)], 1), group_b
+            next_state_right, group_b
         ).squeeze()
         
         q_next_state_b = torch.min(q_next_state_left_b, q_next_state_right_b)
@@ -146,7 +160,6 @@ class NFQAgent:
                 target_q_values = cost_b.squeeze() + gamma * q_next_state_b * (
                     1 - done_b
                 )
-
         return state_action_b, target_q_values, group_b
 
     def train(self, pattern_set: Tuple[torch.Tensor, torch.Tensor]) -> float:

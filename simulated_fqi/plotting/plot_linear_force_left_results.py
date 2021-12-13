@@ -120,18 +120,29 @@ def plot_performance(results, ds="bg", figname=""):
         g_errs.append(h)
     x = [k for k in range(0, 11)]
     plt.figure(figsize=(10, 6))
-    sns.scatterplot(x, c_success, label="CFQI")
-    plt.errorbar(x, c_success, yerr=c_errs, linestyle="None")
-    sns.scatterplot(x, f_success, label="FQI")
-    plt.errorbar(x, f_success, yerr=f_errs, linestyle="None")
-    sns.scatterplot(x, w_success, label="Warm Start")
-    plt.errorbar(x, w_success, yerr=w_errs, linestyle="None")
-    sns.scatterplot(x, t_success, label="Transfer Learning")
-    plt.errorbar(x, t_success, yerr=t_errs, linestyle="None")
-    sns.scatterplot(x, l_success, label="Linear CFQI")
-    plt.errorbar(x, l_success, yerr=l_errs, linestyle="None")
-    sns.scatterplot(x, g_success, label="FQI with access to group label")
-    plt.errorbar(x, g_success, yerr=g_errs, linestyle="None")
+    x_nfqi = np.add(x, 0.05)
+    sns.scatterplot(x_nfqi, c_success, label="NFQI")
+    plt.errorbar(x_nfqi, c_success, yerr=c_errs, linestyle="None")
+    
+    x_fqi = np.add(x, 0.1)
+    sns.scatterplot(x_fqi, f_success, label="FQI")
+    plt.errorbar(x_fqi, f_success, yerr=f_errs, linestyle="None")
+    
+    x_ws = np.add(x, 0.15)
+    sns.scatterplot(x_ws, w_success, label="Warm Start")
+    plt.errorbar(x_ws, w_success, yerr=w_errs, linestyle="None")
+    
+    x_tl = np.add(x, 0.2)
+    sns.scatterplot(x_tl, t_success, label="Transfer Learning")
+    plt.errorbar(x_tl, t_success, yerr=t_errs, linestyle="None")
+    
+    x_l = np.add(x, 0.25)
+    sns.scatterplot(x_l, l_success, label="Linear NFQI")
+    plt.errorbar(x_l, l_success, yerr=l_errs, linestyle="None")
+    
+    x_gfqi = np.add(x, 0.3)
+    sns.scatterplot(x_gfqi, g_success, label="FQI with access to group label")
+    plt.errorbar(x_gfqi, g_success, yerr=g_errs, linestyle="None")
     
     plt.legend(prop={"size": 12})
     if ds == "bg":
