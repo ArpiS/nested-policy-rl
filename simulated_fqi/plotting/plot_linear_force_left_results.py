@@ -5,6 +5,7 @@ import scipy
 import numpy as np
 import pandas as pd
 import matplotlib
+from plottify import autosize
 
 font = {"size": 20}
 matplotlib.rc("font", **font)
@@ -144,7 +145,7 @@ def plot_performance(results, ds="bg", figname=""):
     sns.scatterplot(x_gfqi, g_success, label="FQI with access to group label")
     plt.errorbar(x_gfqi, g_success, yerr=g_errs, linestyle="None")
     
-    plt.legend(prop={"size": 12})
+    #plt.legend(prop={"size": 12})
     if ds == "bg":
         # plt.title("Background Dataset: Performance of CFQI, FQI, Warm Start, Transfer Learning when force on cart is modified")
         plt.title("Cartpole performance, background")
@@ -152,6 +153,7 @@ def plot_performance(results, ds="bg", figname=""):
         plt.title("Cartpole performance, foreground")
     plt.xlabel("Force Left")
     plt.ylabel("Steps Survived")
+    autosize()
     plt.tight_layout()
     plt.savefig(figname)
     plt.show()
