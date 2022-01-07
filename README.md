@@ -18,4 +18,3 @@ In this repository, we demonstrate how to reproduce results on an OpenAI gym env
 ## Contributing
 
 We include an MIT license. If you would like to contribute to this repository, create a branch and merge with a pull request to the original authors.
-If you have questions, please contact the authors (aishwarya@princeton.edu).
