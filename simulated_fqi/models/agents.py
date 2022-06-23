@@ -36,7 +36,7 @@ class NFQAgent:
         action : int
             The action chosen by greedy selection.
         """
-        concatenate_group=True
+        concatenate_group=False
         q_list = np.zeros(len(unique_actions))
         for ii, a in enumerate(unique_actions):
 
