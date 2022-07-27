@@ -179,15 +179,18 @@ class CartPoleRegulatorEnv(gym.Env):
             done = True
             cost = 1
         # Goal States (S+)
-        elif (
-            -self.x_success_range < x < self.x_success_range
-            and -self.theta_success_range < theta < self.theta_success_range
-        ):
+        else :
+            cost = -self.episode_step / 100
             done = False
-            cost = 0
-        else:
-            done = False
-            cost = self.c_trans
+        # elif (
+        #     -self.x_success_range < x < self.x_success_range
+        #     and -self.theta_success_range < theta < self.theta_success_range
+        # ):
+        #     done = False
+        #     cost = 0
+        # else:
+        #     done = False
+        #     cost = self.c_trans
 
         # Check for time limit
         info = {"time_limit": self.episode_step >= self.max_steps}

@@ -39,7 +39,8 @@ import sys
 
 sys.path.append("../models/")
 from lmm import LMM
-import util as util_fqi
+import util
+from util import util as util_fqi
 from contrastive_deepnet import ContrastiveNet, ContrastiveDataset
 
 
@@ -164,7 +165,8 @@ class LMMFQIagent:
         elif self.estimator == "gbm":
             # input = [state action]
             x = np.hstack(
-                (np.asarray(batch["s"]), np.expand_dims(np.asarray(batch["a"]), 1))
+#                 (np.asarray(batch["s"]), np.expand_dims(np.asarray(batch["a"]), 1))
+                (np.asarray(batch["s"]), np.asarray(batch["a"]))
             )
 
             ### Response variable is just the value of the Q table at these indices

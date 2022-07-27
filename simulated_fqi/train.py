@@ -48,7 +48,8 @@ def fqi(
     init_experience=200,
     evaluations=5,
     force_left=5,
-    random_seed=None,
+    # random_seed=None,
+    random_seed=7,
 ):
 
     # Setup environment
@@ -126,6 +127,7 @@ def fqi(
             bg_rollouts.extend(rollout_bg)
             fg_rollouts.extend(rollout_fg)
             total_cost += episode_cost
+    only_bg_rollouts = bg_rollouts.copy()
     bg_rollouts.extend(fg_rollouts)
     all_rollouts = bg_rollouts.copy()
 
@@ -141,13 +143,20 @@ def fqi(
             )
             bg_rollouts_test.extend(rollout_bg)
             fg_rollouts_test.extend(rollout_fg)
+    only_bg_rollouts_test = bg_rollouts_test.copy()
     bg_rollouts_test.extend(fg_rollouts)
     all_rollouts_test = bg_rollouts_test.copy()
+
+    x_fg_train, reward_fg_train = nfq_agent.generate_state_action_rewards(fg_rollouts)
+    x_bg_train, reward_bg_train = nfq_agent.generate_state_action_rewards(only_bg_rollouts)
+
+    x_fg_test, reward_fg_test = nfq_agent.generate_state_action_rewards(fg_rollouts_test)
+    x_bg_test, reward_bg_test = nfq_agent.generate_state_action_rewards(only_bg_rollouts_test)
 
     state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(
         all_rollouts_test
     )
-    X_test = state_action_b
+    # X_test = state_action_b
     test_groups = groups
 
     bg_success_queue = [0] * 3
@@ -188,7 +197,6 @@ def fqi(
                 for param in nfq_net.layers_last_shared.parameters():
                     assert param.requires_grad == False
             else:
-
                 for param in nfq_net.layers_fg.parameters():
                     assert param.requires_grad == False
                 for param in nfq_net.layers_last_fg.parameters():
@@ -345,7 +353,8 @@ def fqi(
         all_rollouts
     )
     X_test = (state_action_b, groups)
-    return nfq_agent
+
+    return nfq_agent, X_test, (x_fg_train, reward_fg_train, x_bg_train, reward_bg_train), (x_fg_test, reward_fg_test, x_bg_test, reward_bg_test)
 
 
 """
@@ -471,10 +480,12 @@ def warm_start(
             state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(
                 fg_rollouts
             )
+            
         else:
             state_action_b, target_q_values, groups = nfq_agent.generate_pattern_set(
                 bg_rollouts
             )
+            
 
         loss = nfq_agent.train((state_action_b, target_q_values, groups))
 
@@ -755,15 +766,28 @@ def transfer_learning(
     return nfq_agent
 
 
+def save_matrices(x_fg, reward_fg, x_bg, reward_bg, suffix):
+    torch.save(x_fg, "matrices/x_fg_"+suffix)
+    torch.save(reward_fg, "matrices/reward_fg_"+suffix)
+    torch.save(x_bg, "matrices/x_bg_"+suffix)
+    torch.save(reward_bg, "matrices/reward_bg_"+suffix)
+
+
 if __name__ == "__main__":
     algorithm = sys.argv[1]
 
     if algorithm == "fqi":
-        nfq_agent = fqi(is_contrastive=False)
+        nfq_agent, X_test = fqi(is_contrastive=False)
         torch.save(nfq_agent._nfq_net, "checkpoints/fqi_model")
     elif algorithm == "cfqi":
-        nfq_agent = fqi(is_contrastive=True)
+        nfq_agent, X_test, train, test = fqi(is_contrastive=True)
+        # print(X_test[0].shape)
+        # print(X_test[1].shape)
+        # print(X_test[0])
+        # print(X_test[1])
         torch.save(nfq_agent._nfq_net, "checkpoints/cfqi_model")
+        save_matrices(*train, "train_nested")
+        save_matrices(*test, "test_nested")
     elif algorithm == "warm_start":
         nfq_agent = warm_start()
         torch.save(nfq_agent._nfq_net, "checkpoints/warmstart_model")

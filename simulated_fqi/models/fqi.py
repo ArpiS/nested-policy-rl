@@ -5,7 +5,9 @@ from sklearn.ensemble import ExtraTreesRegressor, ExtraTreesClassifier
 from lightgbm import LGBMRegressor, LGBMClassifier
 from sklearn.metrics import mean_absolute_error
 from sklearn.linear_model import LinearRegression, LogisticRegression
-import util as util_fqi
+# import util as util_fqi
+import util
+from util import util as util_fqi
 import copy as cp
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -15,8 +17,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import sys
 
-sys.path.append("../environments")
-from cartpole_regulator import CartPoleRegulatorEnv
+sys.path.append(os.path.dirname(os.path.abspath(os.getcwd()))+"/environments")
+from cartpole import CartPoleRegulatorEnv
 
 
 class FQIagent:
@@ -119,8 +121,13 @@ class FQIagent:
     def fitQ(self, batch, Q):
 
         # input = [state action]
+#         print(np.asarray(batch["a"]).shape)
+#         print(np.asarray(batch["s"]))
+#         print(np.expand_dims(np.asarray(batch["a"]), 1))
+#         print(np.asarray(batch["a"]))
         x = np.hstack(
-            (np.asarray(batch["s"]), np.expand_dims(np.asarray(batch["a"]), 1))
+            (np.asarray(batch["s"]), np.asarray(batch["a"]))
+#             (np.asarray(batch["s"]), np.expand_dims(np.asarray(batch["a"]), 1))
         )
 
         # target = r + gamma * max_a(Q(s', a))      == r for first iteration

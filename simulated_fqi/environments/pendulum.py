@@ -13,7 +13,15 @@ ASSETS_DIR = "../../gym/gym/envs/classic_control/assets"
 class PendulumEnv(gym.Env):
     metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 30}
 
-    def __init__(self, g=10.0, m=1.0, max_steps=100, group=1, mode="train"):
+    def __init__(
+        self, 
+        g=10.0, 
+        m=1.0, 
+        max_steps=100, 
+        group=0, 
+        mode="train",
+        torque_left = 0.0
+    ):
         self.max_speed = 8
         self.max_torque = 2.0
         self.dt = 0.05
@@ -25,10 +33,19 @@ class PendulumEnv(gym.Env):
         self.unique_actions = [-2, 0, 2]
         self.group = group
         self.step_number = 0
-        self.max_steps = max_steps
+
+        assert mode in ["train", "eval"]
         self.mode = mode
+        self.max_steps = max_steps if mode == "train" else 500
+
+        self.x_success_range = 2.4
 
         self.c_trans = 0.01
+
+        if self.group == 1:
+            self.torque_left = torque_left
+        else:
+            self.torque_left = 0
 
         high = np.array([1.0, 1.0, self.max_speed], dtype=np.float32)
         self.action_space = spaces.Box(
@@ -51,6 +68,8 @@ class PendulumEnv(gym.Env):
         dt = self.dt
         done = False
 
+        u -= self.torque_left # only affects foreground group
+
         u = np.clip(u, -self.max_torque, self.max_torque)
         u += np.random.uniform(-0.1, 0.1) # Adding noise to the action
         if isinstance(u, list):
@@ -69,9 +88,7 @@ class PendulumEnv(gym.Env):
         self.state = np.array([newth, newthdot])
         self.step_number += 1
 
-        info = {"time_limit": False}
-        if self.step_number == self.max_steps:
-            info["time_limit"] = True
+        info = {"time_limit": self.step_number >= self.max_steps}
 
         return self._get_obs(), cost, False, info
 
@@ -153,18 +170,21 @@ class PendulumEnv(gym.Env):
             self.viewer.close()
             self.viewer = None
 
-    def generate_tuples(self, group, n_iter=101):
+    def generate_tuples(self, n_iter=101):
 
-        if group not in ["background", "foreground"]:
-            raise Exception("group must be a string: 'background' or 'foreground'")
+        # if group not in ["background", "foreground"]:
+        #     raise Exception("group must be a string: 'background' or 'foreground'")
         # group is a string: "background" or "foreground"
 
+        group = self.group
         STATE_DIM = 3
         states = np.zeros((n_iter, STATE_DIM))
         s_init = self.reset()
         states[0, :] = s_init
         costs = np.ones(n_iter)
         actions = np.zeros(n_iter)
+        rewards = []
+        state_action = []
 
         for ii in range(1, n_iter):
 
@@ -178,7 +198,7 @@ class PendulumEnv(gym.Env):
 
             # Perform the action
             s, cost, _, _ = self.step(a)
-            states[ii, :] = s
+            states[ii, :] = s.reshape(-1)
             actions[ii] = a
             costs[ii] = cost
 
@@ -189,7 +209,7 @@ class PendulumEnv(gym.Env):
         costs = costs / np.max(costs)
         for ii in range(n_iter - 1):
 
-            s = states[ii, :]
+            s = states[ii, :].reshape(-1)
             a = actions[ii]
             ns = states[ii + 1, :]
             r = costs[ii]  # -costs[ii]
@@ -198,7 +218,10 @@ class PendulumEnv(gym.Env):
             curr_tuple = (s, a, ns, np.asarray([r]), group, ii)
             tuples.append(curr_tuple)
 
-        return tuples
+            state_action.append(np.append(s, a))
+            rewards.append(r)
+
+        return tuples, np.array(state_action), np.array(rewards)
 
     def generate_rollout(
         self,
@@ -270,10 +293,9 @@ if __name__ == "__main__":
 
         # Perform the action
         s, cost, _, _ = pend.step(a)
-        states[ii, :] = s
+        states[ii, :] = s.reshape(-1)
         costs[ii] = cost
         print(cost)
         # Render the current frame
-        print(cost)
-        pend.render()
-        # import ipdb; ipdb.set_trace()
+        # pend.render()
+        

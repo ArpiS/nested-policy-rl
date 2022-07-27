@@ -5,7 +5,9 @@ from sklearn.ensemble import ExtraTreesRegressor, ExtraTreesClassifier
 from lightgbm import LGBMRegressor, LGBMClassifier
 from sklearn.metrics import mean_absolute_error
 from sklearn.linear_model import LinearRegression
-import util as util_fqi
+# import util as util_fqi
+import util
+from util import util as util_fqi
 import copy as cp
 
 
@@ -118,11 +120,13 @@ class CFQIagent:
         x_fg = np.hstack(
             (
                 np.asarray(batch_foreground["s"]),
-                np.expand_dims(np.asarray(batch_foreground["a"]), 1),
+                np.asarray(batch_foreground["a"]),
+#                 np.expand_dims(np.asarray(batch_foreground["a"]), 1),
             )
         )
         x_shared = np.hstack(
-            (np.asarray(batch["s"]), np.expand_dims(np.asarray(batch["a"]), 1))
+#             (np.asarray(batch["s"]), np.expand_dims(np.asarray(batch["a"]), 1))
+            (np.asarray(batch["s"]), np.asarray(batch["a"]))
         )
 
         # target = r + gamma * max_a(Q(s', a))      == r for first iteration
